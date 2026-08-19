@@ -4,6 +4,8 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getField, parseDateOrNull } from "@/lib/csv-helpers";
 import type { Database } from "@/lib/database.types";
 
+import { formatPositionLabel } from "@/lib/report";
+
 type CaregiverInsert = Database["public"]["Tables"]["caregivers"]["Insert"];
 
 export async function POST(req: Request) {
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
       approved_date: parseDateOrNull(getField(raw, "วันที่อนุมัติ")),
       bank_name: getField(raw, "ธนาคาร") || null,
       bank_account_no: getField(raw, "เลขบัญชี") || null,
-      position: getField(raw, "ตำแหน่ง") || null,
+      position: formatPositionLabel(getField(raw, "ตำแหน่ง")),
       job_type: getField(raw, "ประเภทงาน") || null,
       province: getField(raw, "จังหวัด") || null,
       special_skill: getField(raw, "Special Skill") || null,

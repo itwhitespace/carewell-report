@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { createCaregiver, deleteCaregiver } from "./actions";
+import { formatPositionLabel } from "@/lib/report";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +69,17 @@ export default async function CaregiversPage() {
               { value: "อื่นๆ", label: "อื่นๆ" },
             ]}
           />
-          <Field label="ตำแหน่ง" name="position" placeholder="RN / PN / NA / CG" />
+          <SelectField
+            label="ตำแหน่ง / คุณวุฒิ"
+            name="position"
+            options={[
+              { value: "", label: "- เลือกตำแหน่ง -" },
+              { value: "พยาบาลวิชาชีพ (RN)", label: "พยาบาลวิชาชีพ (RN)" },
+              { value: "ผู้ช่วยพยาบาล (PN)", label: "ผู้ช่วยพยาบาล (PN)" },
+              { value: "พนักงานช่วยการพยาบาล (NA)", label: "พนักงานช่วยการพยาบาล (NA)" },
+              { value: "ผู้ดูแลผู้ป่วย (CG)", label: "ผู้ดูแลผู้ป่วย (CG)" },
+            ]}
+          />
           <Field label="จังหวัด" name="province" />
           <Field label="วันที่สมัคร" name="registered_date" type="date" />
           <Field label="วันที่อนุมัติ" name="approved_date" type="date" />
@@ -102,7 +113,7 @@ export default async function CaregiversPage() {
               <Th>รหัสผู้ดูแล</Th>
               <Th>ชื่อ-นามสกุล</Th>
               <Th>เบอร์โทร</Th>
-              <Th>ตำแหน่ง</Th>
+              <Th>ตำแหน่ง / คุณวุฒิ</Th>
               <Th>จังหวัด</Th>
               <Th>วันที่สมัคร</Th>
               <Th>สถานะ</Th>
@@ -124,9 +135,10 @@ export default async function CaregiversPage() {
                     {c.prefix ? `${c.prefix} ` : ""}{c.full_name || "-"}
                   </Td>
                   <Td>{c.phone || "-"}</Td>
-                  <Td>{c.position || "-"}</Td>
+                  <Td>{formatPositionLabel(c.position)}</Td>
                   <Td>{c.province || "-"}</Td>
                   <Td>{c.registered_date || "-"}</Td>
+
                   <Td>
                     <StatusBadge status={c.status} approved={!!c.approved_date} />
                   </Td>

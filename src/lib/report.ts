@@ -398,6 +398,28 @@ export type WeeklyConversionStat = {
   caregiverBreakdown: { position: string; count: number }[];
 };
 
+export function formatPositionLabel(raw: string | null | undefined): string {
+  if (!raw) return "ไม่ระบุ";
+  const s = raw.trim();
+  if (!s) return "ไม่ระบุ";
+
+  const lower = s.toLowerCase();
+  if (lower.includes("พยาบาลวิชาชีพ") || lower === "rn" || lower.includes("(rn)")) {
+    return "พยาบาลวิชาชีพ (RN)";
+  }
+  if (lower.includes("ผู้ช่วยพยาบาล") || lower === "pn" || lower.includes("(pn)")) {
+    return "ผู้ช่วยพยาบาล (PN)";
+  }
+  if (lower.includes("พนักงานช่วยการพยาบาล") || lower === "na" || lower.includes("(na)")) {
+    return "พนักงานช่วยการพยาบาล (NA)";
+  }
+  if (lower.includes("ผู้ดูแลผู้ป่วย") || lower.includes("ผู้ดูแล") || lower === "cg" || lower.includes("(cg)")) {
+    return "ผู้ดูแลผู้ป่วย (CG)";
+  }
+
+  return s;
+}
+
 /** Compares each week's new LINE OA followers against caregivers who
  * registered in the system during that same 7-day period. Includes breakdown
  * by position/qualification for each week. */
@@ -443,12 +465,13 @@ export function weeklyConversion(
 
     const posCounts = new Map<string, number>();
     for (const c of regsInWeek) {
-      const pos = c.position?.trim() || "ไม่ระบุคุณวุฒิ";
+      const pos = formatPositionLabel(c.position);
       posCounts.set(pos, (posCounts.get(pos) ?? 0) + 1);
     }
     const caregiverBreakdown = [...posCounts.entries()]
       .map(([position, count]) => ({ position, count }))
       .sort((a, b) => b.count - a.count);
+
 
     weeks.push({
       weekNumber,
@@ -557,7 +580,7 @@ export function caregiverPositionByMonth(caregivers: CaregiverRow[]): PositionMo
     if (!c.registered_date) continue;
     const mk = monthKeyOf(c.registered_date);
     monthKeySet.add(mk);
-    const position = c.position?.trim() || "ไม่ระบุ";
+    const position = formatPositionLabel(c.position);
     if (!byPosition.has(position)) byPosition.set(position, new Map());
     const inner = byPosition.get(position)!;
     inner.set(mk, (inner.get(mk) ?? 0) + 1);

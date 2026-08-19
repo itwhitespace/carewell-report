@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { updateCaregiver } from "../../actions";
+import { formatPositionLabel } from "@/lib/report";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,18 @@ export default async function EditCaregiverPage({
             { value: "อื่นๆ", label: "อื่นๆ" },
           ]}
         />
-        <Field label="ตำแหน่ง" name="position" defaultValue={row.position} />
+        <SelectField
+          label="ตำแหน่ง / คุณวุฒิ"
+          name="position"
+          defaultValue={formatPositionLabel(row.position)}
+          options={[
+            { value: "", label: "- เลือกตำแหน่ง -" },
+            { value: "พยาบาลวิชาชีพ (RN)", label: "พยาบาลวิชาชีพ (RN)" },
+            { value: "ผู้ช่วยพยาบาล (PN)", label: "ผู้ช่วยพยาบาล (PN)" },
+            { value: "พนักงานช่วยการพยาบาล (NA)", label: "พนักงานช่วยการพยาบาล (NA)" },
+            { value: "ผู้ดูแลผู้ป่วย (CG)", label: "ผู้ดูแลผู้ป่วย (CG)" },
+          ]}
+        />
         <Field label="ประเภทงาน" name="job_type" defaultValue={row.job_type} />
         <Field label="จังหวัด" name="province" defaultValue={row.province} />
         <Field label="วันที่สมัคร" name="registered_date" type="date" defaultValue={row.registered_date} />
