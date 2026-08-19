@@ -33,12 +33,18 @@ export default function DataPage() {
         />
       </div>
 
-      <h2 className="mt-12 text-lg font-semibold text-neutral-900 dark:text-neutral-100">กรอกข้อมูลเอง</h2>
+      <h2 className="mt-12 text-lg font-semibold text-neutral-900 dark:text-neutral-100">กรอกและจัดการข้อมูลเอง</h2>
       <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-        ข้อมูล 2 ชุดนี้ไม่มีไฟล์ CSV ต้นทาง — กรอกเข้าระบบโดยตรง
+        จัดการข้อมูลในระบบโดยตรง — สามารถดูรายชื่อ เพิ่ม แก้ไข หรือลบรายการได้
       </p>
 
-      <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3">
+        <ManualEntryCard
+          href="/data/caregivers"
+          title="ผู้ดูแลที่ลงทะเบียน"
+          description="ดูรายชื่อผู้ดูแลทั้งหมด รหัสผู้ดูแล ตำแหน่ง จังหวัด สถานะ เพิ่ม/แก้ไข/ลบข้อมูล"
+          accentClass="border-amber-500"
+        />
         <ManualEntryCard
           href="/data/service-recipients"
           title="ผู้รับบริการ"
@@ -52,6 +58,7 @@ export default function DataPage() {
           accentClass="border-rose-500"
         />
       </div>
+
     </main>
   );
 }
