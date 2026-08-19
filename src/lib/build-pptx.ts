@@ -254,9 +254,10 @@ function accountSlides(pptx: PptxGenJS, account: AccountDetail) {
     );
   }
 
-  // Monthly conversion table
-  const convSlide = pptx.addSlide();
-  addBackground(convSlide);
+  // Monthly conversion table (only for accounts without funnel)
+  if (!funnel) {
+    const convSlide = pptx.addSlide();
+    addBackground(convSlide);
 
     addHeader(
       convSlide,
@@ -294,6 +295,7 @@ function accountSlides(pptx: PptxGenJS, account: AccountDetail) {
       rows,
       { top: 1.9, highlightLastRow: account.conversion.length > 0 }
     );
+  }
 
   // Weekly conversion table (only for accounts without funnel)
   const weeklyConvData = (account.weeklyConversionData ?? []).slice(-10);

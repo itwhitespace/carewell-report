@@ -456,14 +456,18 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
         ]
       : []),
 
-    <Slide
-      key={`${account.key}-conversion`}
-      eyebrow={`Line OA — ${account.label}`}
-      title="ตารางวิเคราะห์สัดส่วนผู้ติดตามและผู้สมัครจริงประจำเดือน"
-      subtitle="เทียบผู้ติดตามใหม่รายเดือนกับจำนวนผู้ดูแลที่ลงทะเบียนจริง (นับรวมทั้งระบบ)"
-    >
-      <DataTable columns={conversionColumns} rows={conversionRows} highlightLastRow={account.conversion.length > 0} />
-    </Slide>,
+    ...(!funnel
+      ? [
+          <Slide
+            key={`${account.key}-conversion`}
+            eyebrow={`Line OA — ${account.label}`}
+            title="ตารางวิเคราะห์สัดส่วนผู้ติดตามและผู้สมัครจริงประจำเดือน"
+            subtitle="เทียบผู้ติดตามใหม่รายเดือนกับจำนวนผู้ดูแลที่ลงทะเบียนจริง (นับรวมทั้งระบบ)"
+          >
+            <DataTable columns={conversionColumns} rows={conversionRows} highlightLastRow={account.conversion.length > 0} />
+          </Slide>,
+        ]
+      : []),
 
     ...(!funnel
       ? [
