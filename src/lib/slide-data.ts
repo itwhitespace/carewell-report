@@ -29,6 +29,8 @@ const ACCOUNTS: { key: LineOaRow["account"]; label: string }[] = [
   { key: "carewell", label: "@carewell" },
 ];
 
+import { parseNoteDetail } from "@/lib/notes";
+
 export async function loadSlideData(): Promise<SlideDeckData> {
   const supabase = getSupabaseAdmin();
 
@@ -46,8 +48,17 @@ export async function loadSlideData(): Promise<SlideDeckData> {
 
   const lineOaRows = (lineOaRes.data ?? []) as LineOaRow[];
   const caregivers = (caregiverRes.data ?? []) as CaregiverRow[];
-  const notes = notesRes.data ?? [];
+  const rawNotes = notesRes.data ?? [];
   const recipients = (recipientsRes.data ?? []) as ServiceRecipientRow[];
+
+  const notes = rawNotes.map((n) => {
+    const { status, detail } = parseNoteDetail(n.detail);
+    return {
+      topic: n.topic,
+      detail,
+      status,
+    };
+  });
 
   const growth = buildGrowthSeries(lineOaRows);
 
@@ -68,7 +79,6 @@ export async function loadSlideData(): Promise<SlideDeckData> {
     // deals) is only requested for the @carewell slide group so far.
     channelFunnel: key === "carewell" ? monthlyChannelFunnel(lineOaRows, key, recipients) : undefined,
   }));
-
 
   return {
     totalCaregivers: caregivers.length,

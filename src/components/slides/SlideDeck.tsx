@@ -38,7 +38,7 @@ export type AccountDetail = {
 };
 
 
-export type ReportNote = { topic: string; detail: string | null };
+export type ReportNote = { topic: string; detail: string | null; status?: string | null };
 
 export type SlideDeckData = {
   totalCaregivers: number;
@@ -579,27 +579,44 @@ function ClosingNotesSlide(notes: ReportNote[], palette: ChartPalette) {
         </p>
       ) : (
         <div className="flex flex-col gap-4">
-          {notes.map((note, i) => (
-            <div
-              key={i}
-              className="rounded-2xl border p-6"
-              style={{ borderColor: palette.gridline, backgroundColor: palette.surface }}
-            >
-              <div className="flex items-start gap-3">
-                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: palette.accent }} />
-                <div>
-                  <p className="text-lg font-bold" style={{ color: palette.textPrimary }}>
-                    {note.topic}
-                  </p>
-                  {note.detail && (
-                    <p className="mt-1.5 whitespace-pre-wrap text-sm" style={{ color: palette.textSecondary }}>
-                      {note.detail}
-                    </p>
+          {notes.map((note, i) => {
+            const isDone = note.status === "ดำเนินการแล้ว";
+            return (
+              <div
+                key={i}
+                className="rounded-2xl border p-6 shadow-sm"
+                style={{ borderColor: palette.gridline, backgroundColor: palette.surface }}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: palette.accent }} />
+                    <div>
+                      <p className="text-lg font-bold" style={{ color: palette.textPrimary }}>
+                        {note.topic}
+                      </p>
+                      {note.detail && (
+                        <p className="mt-1.5 whitespace-pre-wrap text-sm" style={{ color: palette.textSecondary }}>
+                          {note.detail}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {note.status && (
+                    <span
+                      className="shrink-0 rounded-full px-3 py-1 text-xs font-bold"
+                      style={{
+                        backgroundColor: isDone ? "#10B98122" : `${palette.accent}22`,
+                        color: isDone ? palette.statusGood : palette.accent,
+                        border: `1px solid ${isDone ? "#10B98144" : `${palette.accent}44`}`,
+                      }}
+                    >
+                      {note.status}
+                    </span>
                   )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Slide>

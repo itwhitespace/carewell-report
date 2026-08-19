@@ -382,7 +382,7 @@ function notesSlide(pptx: PptxGenJS, notes: ReportNote[]) {
   }
   slide.addText(
     notes.map((n) => ({
-      text: `${n.topic}${n.detail ? "\n" + n.detail : ""}`,
+      text: `[${n.status ?? "ประเด็นใหม่"}] ${n.topic}${n.detail ? "\n" + n.detail : ""}`,
       options: { bullet: { code: "25CF" }, breakLine: true, paraSpaceAfter: 12 },
     })),
     {
