@@ -510,6 +510,7 @@ export type ChannelFunnelStat = {
   newFriends: number;
   registerCount: number;
   wonCount: number;
+  cancelCount: number;
   registerRatePct: number | null;
 };
 
@@ -527,18 +528,24 @@ export function monthlyChannelFunnel(
 
   const registerByMonth = new Map<string, number>();
   const wonByMonth = new Map<string, number>();
+  const cancelByMonth = new Map<string, number>();
+
   for (const r of recipients) {
     if (!r.service_date) continue;
     const mk = monthKeyOf(r.service_date);
     registerByMonth.set(mk, (registerByMonth.get(mk) ?? 0) + 1);
-    if ((r.status ?? "").trim().toLowerCase() === "won") {
+    const st = (r.status ?? "").trim().toLowerCase();
+    if (st === "won") {
       wonByMonth.set(mk, (wonByMonth.get(mk) ?? 0) + 1);
+    } else if (st === "ยกเลิกงาน" || st === "cancel" || st === "cancelled") {
+      cancelByMonth.set(mk, (cancelByMonth.get(mk) ?? 0) + 1);
     }
   }
 
   return monthly.map((m) => {
     const registerCount = registerByMonth.get(m.monthKey) ?? 0;
     const wonCount = wonByMonth.get(m.monthKey) ?? 0;
+    const cancelCount = cancelByMonth.get(m.monthKey) ?? 0;
     const registerRatePct = m.newFollowers > 0 ? (registerCount / m.newFollowers) * 100 : null;
     return {
       monthKey: m.monthKey,
@@ -547,6 +554,7 @@ export function monthlyChannelFunnel(
       newFriends: m.newFollowers,
       registerCount,
       wonCount,
+      cancelCount,
       registerRatePct,
     };
   });

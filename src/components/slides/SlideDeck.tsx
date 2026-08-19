@@ -258,58 +258,54 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
 
   const funnel = account.channelFunnel;
 
-  // Combined channel + conversion table (funnel + conversion merged into one
-  // compact table, short headers so it fits the slide without scrolling —
-  // only built when this account has funnel data, currently @carewell only).
-  const combinedColumns: Column[] = [
-    { key: "month", label: "เดือน" },
-    { key: "friends", label: "สะสม", align: "right" },
-    { key: "new", label: "+ใหม่", align: "right" },
-    { key: "caregiver", label: "ผู้ดูแลสมัคร", align: "right" },
-    { key: "caregiverRate", label: "%สมัคร", align: "right" },
-    { key: "customer", label: "ลูกค้าจอง", align: "right" },
-    { key: "won", label: "Won", align: "right" },
-    { key: "customerRate", label: "%จอง", align: "right" },
+  const funnelColumns: Column[] = [
+    { key: "month", label: "เดือน (รอบปี 2569)" },
+    { key: "friends", label: "ผู้ติดตามสะสม (Friend Count)", align: "right" },
+    { key: "newFriends", label: "ผู้ติดตามเพิ่มรายใหม่ (Leads/New Friends)", align: "right" },
+    { key: "register", label: "จองลงทะเบียนบริการ (Register)", align: "right" },
+    { key: "won", label: "ปิดการขายสำเร็จ (Won Deals)", align: "right" },
+    { key: "cancel", label: "ยกเลิกงาน (Cancel)", align: "right" },
+    { key: "rate", label: "อัตราการลงทะเบียน (Register Rate)", align: "right" },
   ];
-  const conversionByMonth = new Map(account.conversion.map((c) => [c.monthKey, c]));
-  const combinedRows: Record<string, React.ReactNode>[] = (funnel ?? []).map((f) => {
-    const c = conversionByMonth.get(f.monthKey);
-    return {
-      month: shortMonthLabel(f.monthKey),
-      friends: fmtInt(f.friendCount),
-      new: fmtInt(f.newFriends),
-      caregiver: fmtInt(c?.actualRegistrations ?? 0),
-      caregiverRate: <span style={{ color: palette.statusGood }}>{fmtPct(c?.conversionRatePct ?? null)}</span>,
-      customer: (
-        <span style={{ color: f.registerCount > 0 ? palette.statusGood : undefined, fontWeight: f.registerCount > 0 ? 600 : 400 }}>
-          {fmtInt(f.registerCount)}
-        </span>
-      ),
-      won: (
-        <span style={{ color: f.wonCount > 0 ? palette.statusCritical : undefined, fontWeight: f.wonCount > 0 ? 600 : 400 }}>
-          {fmtInt(f.wonCount)}
-        </span>
-      ),
-      customerRate: <span style={{ color: palette.statusGood }}>{fmtPct(f.registerRatePct)}</span>,
-    };
-  });
+
+  const funnelRows: Record<string, React.ReactNode>[] = (funnel ?? []).map((f) => ({
+    month: f.monthLabel,
+    friends: `${fmtInt(f.friendCount)} คน`,
+    newFriends: `${fmtInt(f.newFriends)} คน`,
+    register: (
+      <span style={{ color: f.registerCount > 0 ? palette.statusGood : undefined, fontWeight: f.registerCount > 0 ? 600 : 400 }}>
+        {f.registerCount} คน
+      </span>
+    ),
+    won: (
+      <span style={{ color: f.wonCount > 0 ? "#F87171" : undefined, fontWeight: f.wonCount > 0 ? 600 : 400 }}>
+        {f.wonCount > 0 ? `${f.wonCount} ราย (Won)` : "0 ราย"}
+      </span>
+    ),
+    cancel: f.cancelCount > 0 ? String(f.cancelCount) : "-",
+    rate: (
+      <span style={{ color: palette.statusGood, fontWeight: 600 }}>
+        {fmtPct(f.registerRatePct, 2)}
+      </span>
+    ),
+  }));
+
   if (funnel && funnel.length > 0) {
-    const totalFriend = funnel[funnel.length - 1].friendCount;
-    const totalNewSum = funnel.reduce((s, f) => s + f.newFriends, 0);
-    const totalCaregiver = account.conversion.reduce((s, c) => s + c.actualRegistrations, 0);
-    const totalCaregiverRate = totalNewSum > 0 ? (totalCaregiver / totalNewSum) * 100 : null;
-    const totalCustomer = funnel.reduce((s, f) => s + f.registerCount, 0);
-    const totalWonAll = funnel.reduce((s, f) => s + f.wonCount, 0);
-    const totalCustomerRate = totalNewSum > 0 ? (totalCustomer / totalNewSum) * 100 : null;
-    combinedRows.push({
-      month: <b>รวมสะสม</b>,
-      friends: <b>{fmtInt(totalFriend)}</b>,
-      new: "",
-      caregiver: <b>{fmtInt(totalCaregiver)}</b>,
-      caregiverRate: <b>{fmtPct(totalCaregiverRate)}</b>,
-      customer: <b>{fmtInt(totalCustomer)}</b>,
-      won: <b>{fmtInt(totalWonAll)}</b>,
-      customerRate: <b>{fmtPct(totalCustomerRate)}</b>,
+    const lastFriend = funnel[funnel.length - 1].friendCount;
+    const totalNewFriends = funnel.reduce((s, f) => s + f.newFriends, 0);
+    const totalRegister = funnel.reduce((s, f) => s + f.registerCount, 0);
+    const totalWon = funnel.reduce((s, f) => s + f.wonCount, 0);
+    const totalCancel = funnel.reduce((s, f) => s + f.cancelCount, 0);
+    const totalRate = totalNewFriends > 0 ? (totalRegister / totalNewFriends) * 100 : null;
+
+    funnelRows.push({
+      month: <b>ยอดรวมสะสม (Total)</b>,
+      friends: <b>{fmtInt(lastFriend)} คน (สะสมจริง)</b>,
+      newFriends: "-",
+      register: <b>{fmtInt(totalRegister)} คน</b>,
+      won: <b>{fmtInt(totalWon)} ราย (Won)</b>,
+      cancel: <b>{totalCancel > 0 ? totalCancel : "-"}</b>,
+      rate: <b>{fmtPct(totalRate, 2)}</b>,
     });
   }
 
@@ -340,7 +336,6 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
   const latestWeeklyConv = recentWeeklyConv.length > 0 ? recentWeeklyConv[recentWeeklyConv.length - 1] : null;
 
   return [
-
     <div key={`${account.key}-divider`} className="h-full">
       <SectionDivider label={ACCOUNT_DIVIDER_LABEL[account.key]} sublabel="Line Official Account" accent={accentColor} />
     </div>,
@@ -357,8 +352,30 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
       <DataTable columns={monthlyColumns} rows={monthlyRows} />
     </Slide>,
 
+    ...(funnel
+      ? [
+          <Slide
+            key={`${account.key}-funnel`}
+            eyebrow={`Line OA — ${account.label}`}
+            title="ตารางบันทึกสถิติช่องทางลูกค้ารายเดือน"
+            subtitle="ผู้ติดตาม Line OA, ผู้จองลงทะเบียนบริการ, ปิดการขายสำเร็จ และอัตราการลงทะเบียน"
+          >
+            <DataTable columns={funnelColumns} rows={funnelRows} highlightLastRow={funnelRows.length > 0} />
+          </Slide>,
+        ]
+      : []),
+
     <Slide key={`${account.key}-weekly`} eyebrow={`Line OA — ${account.label}`} title="ประวัติรายสัปดาห์" subtitle="10 สัปดาห์ล่าสุด">
       <DataTable columns={weeklyColumns} rows={weeklyRows} />
+    </Slide>,
+
+    <Slide
+      key={`${account.key}-conversion`}
+      eyebrow={`Line OA — ${account.label}`}
+      title="ตารางวิเคราะห์สัดส่วนผู้ติดตามและผู้สมัครจริงประจำเดือน"
+      subtitle="เทียบผู้ติดตามใหม่รายเดือนกับจำนวนผู้ดูแลที่ลงทะเบียนจริง (นับรวมทั้งระบบ)"
+    >
+      <DataTable columns={conversionColumns} rows={conversionRows} highlightLastRow={account.conversion.length > 0} />
     </Slide>,
 
     <Slide

@@ -197,64 +197,63 @@ function accountSlides(pptx: PptxGenJS, account: AccountDetail) {
     account.weekly.slice(-10).map((w) => [w.label, w.rangeLabel, fmtInt(w.cumulative), fmtSigned(w.newCount), w.tierLabel])
   );
 
-  // Combined channel-funnel table (carewell) or plain conversion table
+  // Channel-funnel table (carewell)
   const funnel = account.channelFunnel;
-  const convSlide = pptx.addSlide();
-  addBackground(convSlide);
   if (funnel) {
+    const funnelSlide = pptx.addSlide();
+    addBackground(funnelSlide);
     addHeader(
-      convSlide,
+      funnelSlide,
       `Line OA — ${account.label}`,
-      "ตารางช่องทางลูกค้า และผู้สมัครรายเดือน",
-      "ผู้ติดตาม Line, ผู้ดูแลที่สมัคร และลูกค้าที่จองบริการ/ปิดการขาย ในตารางเดียว"
+      "ตารางบันทึกสถิติช่องทางลูกค้ารายเดือน",
+      "ผู้ติดตาม Line OA, ผู้จองลงทะเบียนบริการ, ปิดการขายสำเร็จ และอัตราการลงทะเบียน"
     );
-    const conversionByMonth = new Map(account.conversion.map((c) => [c.monthKey, c]));
-    const rows = funnel.map((f) => {
-      const c = conversionByMonth.get(f.monthKey);
-      return [
-        shortMonthLabel(f.monthKey),
-        fmtInt(f.friendCount),
-        fmtInt(f.newFriends),
-        fmtInt(c?.actualRegistrations ?? 0),
-        fmtPct(c?.conversionRatePct ?? null),
-        fmtInt(f.registerCount),
-        fmtInt(f.wonCount),
-        fmtPct(f.registerRatePct),
-      ];
-    });
+    const rows: (string | number)[][] = funnel.map((f) => [
+      f.monthLabel,
+      `${fmtInt(f.friendCount)} คน`,
+      `${fmtInt(f.newFriends)} คน`,
+      `${fmtInt(f.registerCount)} คน`,
+      f.wonCount > 0 ? `${f.wonCount} ราย (Won)` : "0 ราย",
+      f.cancelCount > 0 ? String(f.cancelCount) : "-",
+      fmtPct(f.registerRatePct, 2),
+    ]);
     if (funnel.length > 0) {
-      const totalFriend = funnel[funnel.length - 1].friendCount;
-      const totalNewSum = funnel.reduce((s, f) => s + f.newFriends, 0);
-      const totalCaregiver = account.conversion.reduce((s, c) => s + c.actualRegistrations, 0);
-      const totalCustomer = funnel.reduce((s, f) => s + f.registerCount, 0);
+      const lastFriend = funnel[funnel.length - 1].friendCount;
+      const totalNewFriends = funnel.reduce((s, f) => s + f.newFriends, 0);
+      const totalRegister = funnel.reduce((s, f) => s + f.registerCount, 0);
       const totalWon = funnel.reduce((s, f) => s + f.wonCount, 0);
+      const totalCancel = funnel.reduce((s, f) => s + f.cancelCount, 0);
+      const totalRate = totalNewFriends > 0 ? (totalRegister / totalNewFriends) * 100 : null;
       rows.push([
-        "รวมสะสม",
-        fmtInt(totalFriend),
-        "",
-        fmtInt(totalCaregiver),
-        fmtPct(totalNewSum > 0 ? (totalCaregiver / totalNewSum) * 100 : null),
-        fmtInt(totalCustomer),
-        fmtInt(totalWon),
-        fmtPct(totalNewSum > 0 ? (totalCustomer / totalNewSum) * 100 : null),
+        "ยอดรวมสะสม (Total)",
+        `${fmtInt(lastFriend)} คน (สะสมจริง)`,
+        "-",
+        `${fmtInt(totalRegister)} คน`,
+        `${fmtInt(totalWon)} ราย (Won)`,
+        totalCancel > 0 ? String(totalCancel) : "-",
+        fmtPct(totalRate, 2),
       ]);
     }
     addDataTable(
-      convSlide,
+      funnelSlide,
       [
-        { label: "เดือน", width: 1.1 },
-        { label: "สะสม", width: 1 },
-        { label: "+ใหม่", width: 1 },
-        { label: "ผู้ดูแลสมัคร", width: 1.3 },
-        { label: "%สมัคร", width: 1 },
-        { label: "ลูกค้าจอง", width: 1.1 },
-        { label: "Won", width: 0.8 },
-        { label: "%จอง", width: 1 },
+        { label: "เดือน (รอบปี 2569)", width: 1.8 },
+        { label: "ผู้ติดตามสะสม", width: 1.5 },
+        { label: "ผู้ติดตามเพิ่มรายใหม่", width: 1.5 },
+        { label: "จองลงทะเบียนบริการ", width: 1.5 },
+        { label: "ปิดการขายสำเร็จ", width: 1.2 },
+        { label: "ยกเลิกงาน", width: 0.8 },
+        { label: "อัตราการลงทะเบียน", width: 1.2 },
       ],
       rows,
-      { top: 1.9, highlightLastRow: funnel.length > 0 }
+      { top: 1.6, highlightLastRow: funnel.length > 0 }
     );
-  } else {
+  }
+
+  // Monthly conversion table
+  const convSlide = pptx.addSlide();
+  addBackground(convSlide);
+
     addHeader(
       convSlide,
       `Line OA — ${account.label}`,
@@ -291,7 +290,6 @@ function accountSlides(pptx: PptxGenJS, account: AccountDetail) {
       rows,
       { top: 1.9, highlightLastRow: account.conversion.length > 0 }
     );
-  }
 
   // Weekly conversion table
   const weeklyConvData = (account.weeklyConversionData ?? []).slice(-10);
