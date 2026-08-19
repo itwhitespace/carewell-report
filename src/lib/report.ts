@@ -384,6 +384,97 @@ export function monthlyConversion(
   });
 }
 
+export type WeeklyConversionStat = {
+  weekNumber: number;
+  label: string;
+  rangeLabel: string;
+  startDate: string;
+  endDate: string;
+  newFollowers: number;
+  actualRegistrations: number;
+  conversionRatePct: number | null;
+  tier: ConversionTier;
+  tierLabel: string;
+  caregiverBreakdown: { position: string; count: number }[];
+};
+
+/** Compares each week's new LINE OA followers against caregivers who
+ * registered in the system during that same 7-day period. Includes breakdown
+ * by position/qualification for each week. */
+export function weeklyConversion(
+  rows: LineOaRow[],
+  account: LineOaRow["account"],
+  caregivers: CaregiverRow[]
+): WeeklyConversionStat[] {
+  const series = rows
+    .filter((r) => r.account === account && r.contacts !== null)
+    .sort((a, b) => a.stat_date.localeCompare(b.stat_date));
+  if (series.length === 0) return [];
+
+  const endDate = new Date(series[series.length - 1].stat_date);
+  let cursor = new Date(series[0].stat_date);
+  let prevCumulative = 0;
+  let weekNumber = 1;
+  const weeks: WeeklyConversionStat[] = [];
+
+  while (cursor <= endDate) {
+    const weekEnd = new Date(cursor);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const isLast = weekEnd >= endDate;
+    const rangeEnd = isLast ? endDate : weekEnd;
+
+    const startDateIso = cursor.toISOString().slice(0, 10);
+    const endDateIso = rangeEnd.toISOString().slice(0, 10);
+
+    const recordsInRange = series.filter((r) => new Date(r.stat_date) <= rangeEnd);
+    const rec = recordsInRange[recordsInRange.length - 1];
+    const cumulative = rec?.contacts ?? prevCumulative;
+    const newFollowers = cumulative - prevCumulative;
+
+    const regsInWeek = caregivers.filter((c) => {
+      if (!c.registered_date) return false;
+      return c.registered_date >= startDateIso && c.registered_date <= endDateIso;
+    });
+
+    const actualRegistrations = regsInWeek.length;
+    const conversionRatePct =
+      newFollowers > 0 ? (actualRegistrations / newFollowers) * 100 : null;
+    const tier = classifyConversionTier(conversionRatePct);
+
+    const posCounts = new Map<string, number>();
+    for (const c of regsInWeek) {
+      const pos = c.position?.trim() || "ไม่ระบุคุณวุฒิ";
+      posCounts.set(pos, (posCounts.get(pos) ?? 0) + 1);
+    }
+    const caregiverBreakdown = [...posCounts.entries()]
+      .map(([position, count]) => ({ position, count }))
+      .sort((a, b) => b.count - a.count);
+
+    weeks.push({
+      weekNumber,
+      label: isLast ? "Last" : String(weekNumber),
+      rangeLabel: `${shortDateTh(startDateIso)} - ${shortDateTh(endDateIso)}`,
+      startDate: startDateIso,
+      endDate: endDateIso,
+      newFollowers,
+      actualRegistrations,
+      conversionRatePct,
+      tier,
+      tierLabel: CONVERSION_TIER_LABEL[tier],
+      caregiverBreakdown,
+    });
+
+    prevCumulative = cumulative;
+    if (isLast) break;
+    cursor = new Date(rangeEnd);
+    cursor.setDate(cursor.getDate() + 1);
+    weekNumber++;
+  }
+
+  return weeks;
+}
+
+
 export type ServiceRecipientRow = {
   service_date: string | null;
   status: string | null;

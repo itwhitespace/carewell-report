@@ -8,6 +8,7 @@ import {
   monthlyLineOaStats,
   rankAndFold,
   statusCounts,
+  weeklyConversion,
   weeklyLineOaHistory,
   type CaregiverRow,
   type LineOaRow,
@@ -62,10 +63,12 @@ export async function loadSlideData(): Promise<SlideDeckData> {
     monthly: monthlyLineOaStats(lineOaRows, key),
     weekly: weeklyLineOaHistory(lineOaRows, key),
     conversion: monthlyConversion(lineOaRows, key, caregivers),
+    weeklyConversionData: weeklyConversion(lineOaRows, key, caregivers),
     // Customer-channel funnel (LINE friends -> service registrations -> won
     // deals) is only requested for the @carewell slide group so far.
     channelFunnel: key === "carewell" ? monthlyChannelFunnel(lineOaRows, key, recipients) : undefined,
   }));
+
 
   return {
     totalCaregivers: caregivers.length,

@@ -292,7 +292,49 @@ function accountSlides(pptx: PptxGenJS, account: AccountDetail) {
       { top: 1.9, highlightLastRow: account.conversion.length > 0 }
     );
   }
+
+  // Weekly conversion table
+  const weeklyConvData = (account.weeklyConversionData ?? []).slice(-10);
+  if (weeklyConvData.length > 0) {
+    const weeklyConvSlide = pptx.addSlide();
+    addBackground(weeklyConvSlide);
+    addHeader(
+      weeklyConvSlide,
+      `Line OA — ${account.label}`,
+      "ตารางวิเคราะห์สัดส่วนผู้ติดตามและผู้สมัครจริงประจำสัปดาห์",
+      "เทียบผู้ติดตามใหม่รายสัปดาห์กับจำนวนผู้ดูแลที่ลงทะเบียนจริงในสัปดาห์นั้นๆ (10 สัปดาห์ล่าสุด)"
+    );
+    addDataTable(
+      weeklyConvSlide,
+      [
+        { label: "สัปดาห์ / ช่วงวันที่", width: 3 },
+        { label: "New (LINE OA)", width: 1.5 },
+        { label: "สมัครจริง", width: 1.5 },
+        { label: "Conversion Rate", width: 1.5 },
+        { label: "สถานะ", width: 1.5 },
+      ],
+      weeklyConvData.map((w) => [
+        `สัปดาห์ที่ ${w.weekNumber} (${w.rangeLabel})`,
+        fmtInt(w.newFollowers),
+        fmtInt(w.actualRegistrations),
+        fmtPct(w.conversionRatePct),
+        w.tierLabel,
+      ]),
+      { top: 1.6 }
+    );
+
+    const latestW = weeklyConvData[weeklyConvData.length - 1];
+    const posDetails = latestW.caregiverBreakdown.length > 0
+      ? latestW.caregiverBreakdown.map((b) => `${b.position}: ${b.count} คน`).join(", ")
+      : "ไม่มีผู้สมัครใหม่";
+
+    weeklyConvSlide.addText(
+      `📌 สัปดาห์ล่าสุด (สัปดาห์ที่ ${latestW.weekNumber}: ${latestW.rangeLabel}) — มีผู้สมัครใหม่รวม ${latestW.actualRegistrations} คน | คุณวุฒิ/ประเภทบุคลากร: ${posDetails}`,
+      { x: 0.5, y: 4.8, w: 9, h: 0.5, fontSize: 10, color: C.accent, bold: true }
+    );
+  }
 }
+
 
 function positionSlide(pptx: PptxGenJS, stats: PositionMonthStats) {
   const slide = pptx.addSlide();

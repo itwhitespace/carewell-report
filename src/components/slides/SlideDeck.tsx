@@ -11,6 +11,7 @@ import type {
   MonthlyStat,
   PositionMonthStats,
   RankedItem,
+  WeeklyConversionStat,
   WeeklyStat,
 } from "@/lib/report";
 import { conversionTierStyle, growthTierStyle, useChartPalette, type ChartPalette } from "@/lib/chart-theme";
@@ -32,8 +33,10 @@ export type AccountDetail = {
   monthly: MonthlyStat[];
   weekly: WeeklyStat[];
   conversion: ConversionStat[];
+  weeklyConversionData?: WeeklyConversionStat[];
   channelFunnel?: ChannelFunnelStat[];
 };
+
 
 export type ReportNote = { topic: string; detail: string | null };
 
@@ -310,7 +313,34 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
     });
   }
 
+  const weeklyConvColumns: Column[] = [
+    { key: "week", label: "สัปดาห์ / ช่วงวันที่" },
+    { key: "new", label: "ผู้ติดตามใหม่จาก LINE OA (คน)", align: "right" },
+    { key: "actual", label: "จำนวนผู้สมัครจริง (คน)", align: "right" },
+    { key: "rate", label: "อัตราการสมัคร (Conversion Rate)", align: "right" },
+    { key: "status", label: "สถานะประสิทธิภาพ" },
+  ];
+
+  const recentWeeklyConv = (account.weeklyConversionData ?? []).slice(-10);
+  const weeklyConvRows = recentWeeklyConv.map((w) => {
+    const tier = conversionTierStyle(w.tier, palette);
+    return {
+      week: (
+        <span style={{ fontWeight: w.label === "Last" ? 700 : 400 }}>
+          สัปดาห์ที่ {w.weekNumber} ({w.rangeLabel})
+        </span>
+      ),
+      new: `${fmtInt(w.newFollowers)} คน`,
+      actual: `${fmtInt(w.actualRegistrations)} คน`,
+      rate: fmtPct(w.conversionRatePct, 2),
+      status: <Tag label={w.tierLabel} bg={tier.bg} fg={tier.fg} />,
+    };
+  });
+
+  const latestWeeklyConv = recentWeeklyConv.length > 0 ? recentWeeklyConv[recentWeeklyConv.length - 1] : null;
+
   return [
+
     <div key={`${account.key}-divider`} className="h-full">
       <SectionDivider label={ACCOUNT_DIVIDER_LABEL[account.key]} sublabel="Line Official Account" accent={accentColor} />
     </div>,
@@ -331,29 +361,66 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
       <DataTable columns={weeklyColumns} rows={weeklyRows} />
     </Slide>,
 
-    ...(funnel
-      ? [
-          <Slide
-            key={`${account.key}-funnel`}
-            eyebrow={`Line OA — ${account.label}`}
-            title="ตารางช่องทางลูกค้า และผู้สมัครรายเดือน"
-            subtitle="ผู้ติดตาม Line, ผู้ดูแลที่สมัคร และลูกค้าที่จองบริการ/ปิดการขาย ในตารางเดียว"
-          >
-            <DataTable columns={combinedColumns} rows={combinedRows} highlightLastRow={combinedRows.length > 0} />
-          </Slide>,
-        ]
-      : [
-          <Slide
-            key={`${account.key}-conversion`}
-            eyebrow={`Line OA — ${account.label}`}
-            title="ตารางวิเคราะห์สัดส่วนผู้ติดตามและผู้สมัครจริงประจำเดือน"
-            subtitle="เทียบผู้ติดตามใหม่รายเดือนกับจำนวนผู้ดูแลที่ลงทะเบียนจริง (นับรวมทั้งระบบ)"
-          >
-            <DataTable columns={conversionColumns} rows={conversionRows} highlightLastRow={account.conversion.length > 0} />
-          </Slide>,
-        ]),
+    <Slide
+      key={`${account.key}-weekly-conversion`}
+      eyebrow={`Line OA — ${account.label}`}
+      title="ตารางวิเคราะห์สัดส่วนผู้ติดตามและผู้สมัครจริงประจำสัปดาห์"
+      subtitle="เทียบผู้ติดตามใหม่รายสัปดาห์กับจำนวนผู้ดูแลที่ลงทะเบียนจริงในสัปดาห์นั้นๆ (10 สัปดาห์ล่าสุด)"
+    >
+      <DataTable columns={weeklyConvColumns} rows={weeklyConvRows} />
+      {latestWeeklyConv && (
+        <div
+          className="mt-6 rounded-2xl border p-5 backdrop-blur-sm shadow-lg"
+          style={{ borderColor: `${palette.accent}66`, backgroundColor: `${palette.surface}ee` }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-base font-bold" style={{ color: palette.textPrimary }}>
+              📌 รายละเอียดผู้สมัครใหม่ในสัปดาห์ล่าสุด (สัปดาห์ที่ {latestWeeklyConv.weekNumber}: {latestWeeklyConv.rangeLabel})
+            </h3>
+            <span
+              className="rounded-full px-3 py-1 text-xs font-semibold"
+              style={{ backgroundColor: `${palette.accent}33`, color: palette.accent }}
+            >
+              ผู้สมัครใหม่รวม: {latestWeeklyConv.actualRegistrations} คน
+            </span>
+          </div>
+
+          {latestWeeklyConv.caregiverBreakdown.length === 0 ? (
+            <p className="mt-2 text-sm" style={{ color: palette.muted }}>
+              ในสัปดาห์ล่าสุดยังไม่มีผู้สมัครใหม่ในระบบ
+            </p>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center gap-2.5">
+              <span className="text-sm font-medium" style={{ color: palette.textSecondary }}>
+                ประเภทบุคลากร / คุณวุฒิที่สมัครเข้ามา:
+              </span>
+              {latestWeeklyConv.caregiverBreakdown.map((b) => (
+                <span
+                  key={b.position}
+                  className="inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-xs font-medium"
+                  style={{
+                    borderColor: palette.gridline,
+                    backgroundColor: palette.pagePlane,
+                    color: palette.textPrimary,
+                  }}
+                >
+                  <span className="font-semibold" style={{ color: palette.accent }}>{b.position}</span>
+                  <span
+                    className="rounded px-1.5 py-0.5 text-[11px] font-bold"
+                    style={{ backgroundColor: `${palette.accent}22`, color: palette.statusGood }}
+                  >
+                    {b.count} คน
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </Slide>,
   ];
 }
+
 
 function PositionMonthSlide(stats: PositionMonthStats, palette: ChartPalette) {
   const columns: Column[] = [
