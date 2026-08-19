@@ -509,6 +509,7 @@ export type ChannelFunnelStat = {
   friendCount: number | null;
   newFriends: number;
   registerCount: number;
+  matchingCount: number;
   wonCount: number;
   cancelCount: number;
   registerRatePct: number | null;
@@ -527,6 +528,7 @@ export function monthlyChannelFunnel(
   const monthly = monthlyLineOaStats(lineOaRows, account);
 
   const registerByMonth = new Map<string, number>();
+  const matchingByMonth = new Map<string, number>();
   const wonByMonth = new Map<string, number>();
   const cancelByMonth = new Map<string, number>();
 
@@ -537,6 +539,8 @@ export function monthlyChannelFunnel(
     const st = (r.status ?? "").trim().toLowerCase();
     if (st === "won") {
       wonByMonth.set(mk, (wonByMonth.get(mk) ?? 0) + 1);
+    } else if (st === "กำลังจับคู่" || st === "matching" || st === "in progress") {
+      matchingByMonth.set(mk, (matchingByMonth.get(mk) ?? 0) + 1);
     } else if (st === "ยกเลิกงาน" || st === "cancel" || st === "cancelled") {
       cancelByMonth.set(mk, (cancelByMonth.get(mk) ?? 0) + 1);
     }
@@ -544,6 +548,7 @@ export function monthlyChannelFunnel(
 
   return monthly.map((m) => {
     const registerCount = registerByMonth.get(m.monthKey) ?? 0;
+    const matchingCount = matchingByMonth.get(m.monthKey) ?? 0;
     const wonCount = wonByMonth.get(m.monthKey) ?? 0;
     const cancelCount = cancelByMonth.get(m.monthKey) ?? 0;
     const registerRatePct = m.newFollowers > 0 ? (registerCount / m.newFollowers) * 100 : null;
@@ -553,6 +558,7 @@ export function monthlyChannelFunnel(
       friendCount: m.contacts,
       newFriends: m.newFollowers,
       registerCount,
+      matchingCount,
       wonCount,
       cancelCount,
       registerRatePct,

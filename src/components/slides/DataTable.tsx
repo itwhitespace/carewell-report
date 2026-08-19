@@ -5,7 +5,7 @@ import { contrastText, useChartPalette } from "@/lib/chart-theme";
 
 export type Column = {
   key: string;
-  label: string;
+  label: ReactNode;
   align?: "left" | "right" | "center";
 };
 
@@ -42,7 +42,7 @@ export function DataTable({
             {columns.map((col) => (
               <th
                 key={col.key}
-                className="whitespace-nowrap px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
+                className="px-3 py-2 text-xs font-semibold uppercase tracking-wide leading-tight"
                 style={{
                   color: contrastText(palette.accent),
                   textAlign: col.align ?? "left",

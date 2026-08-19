@@ -259,13 +259,93 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
   const funnel = account.channelFunnel;
 
   const funnelColumns: Column[] = [
-    { key: "month", label: "เดือน (รอบปี 2569)" },
-    { key: "friends", label: "ผู้ติดตามสะสม (Friend Count)", align: "right" },
-    { key: "newFriends", label: "ผู้ติดตามเพิ่มรายใหม่ (Leads/New Friends)", align: "right" },
-    { key: "register", label: "จองลงทะเบียนบริการ (Register)", align: "right" },
-    { key: "won", label: "ปิดการขายสำเร็จ (Won Deals)", align: "right" },
-    { key: "cancel", label: "ยกเลิกงาน (Cancel)", align: "right" },
-    { key: "rate", label: "อัตราการลงทะเบียน (Register Rate)", align: "right" },
+    {
+      key: "month",
+      label: (
+        <div>
+          เดือน
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(รอบปี 2569)</span>
+        </div>
+      ),
+    },
+    {
+      key: "friends",
+      label: (
+        <div>
+          ผู้ติดตามสะสม
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Friend Count)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
+      key: "newFriends",
+      label: (
+        <div>
+          ผู้ติดตามเพิ่มรายใหม่
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Leads/New Friends)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
+      key: "register",
+      label: (
+        <div>
+          จองลงทะเบียนบริการ
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Register)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
+      key: "matching",
+      label: (
+        <div>
+          กำลังจับคู่
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Matching)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
+      key: "won",
+      label: (
+        <div>
+          ปิดการขายสำเร็จ
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Won Deals)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
+      key: "cancel",
+      label: (
+        <div>
+          ยกเลิกงาน
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Cancel)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
+      key: "rate",
+      label: (
+        <div>
+          อัตราการลงทะเบียน
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Register Rate)</span>
+        </div>
+      ),
+      align: "right",
+    },
   ];
 
   const funnelRows: Record<string, React.ReactNode>[] = (funnel ?? []).map((f) => ({
@@ -275,6 +355,11 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
     register: (
       <span style={{ color: f.registerCount > 0 ? palette.statusGood : undefined, fontWeight: f.registerCount > 0 ? 600 : 400 }}>
         {f.registerCount} คน
+      </span>
+    ),
+    matching: (
+      <span style={{ color: f.matchingCount > 0 ? "#F59E0B" : undefined, fontWeight: f.matchingCount > 0 ? 600 : 400 }}>
+        {f.matchingCount > 0 ? `${f.matchingCount} ราย` : "-"}
       </span>
     ),
     won: (
@@ -294,6 +379,7 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
     const lastFriend = funnel[funnel.length - 1].friendCount;
     const totalNewFriends = funnel.reduce((s, f) => s + f.newFriends, 0);
     const totalRegister = funnel.reduce((s, f) => s + f.registerCount, 0);
+    const totalMatching = funnel.reduce((s, f) => s + f.matchingCount, 0);
     const totalWon = funnel.reduce((s, f) => s + f.wonCount, 0);
     const totalCancel = funnel.reduce((s, f) => s + f.cancelCount, 0);
     const totalRate = totalNewFriends > 0 ? (totalRegister / totalNewFriends) * 100 : null;
@@ -303,6 +389,7 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
       friends: <b>{fmtInt(lastFriend)} คน (สะสมจริง)</b>,
       newFriends: "-",
       register: <b>{fmtInt(totalRegister)} คน</b>,
+      matching: <b>{totalMatching > 0 ? `${totalMatching} ราย` : "-"}</b>,
       won: <b>{fmtInt(totalWon)} ราย (Won)</b>,
       cancel: <b>{totalCancel > 0 ? totalCancel : "-"}</b>,
       rate: <b>{fmtPct(totalRate, 2)}</b>,
