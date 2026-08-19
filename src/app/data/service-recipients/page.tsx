@@ -51,6 +51,7 @@ export default async function ServiceRecipientsPage() {
           options={[
             { value: "", label: "- เลือกสถานะ -" },
             { value: "Won", label: "Won" },
+            { value: "กำลังจับคู่", label: "กำลังจับคู่" },
             { value: "ยกเลิกงาน", label: "ยกเลิกงาน" },
           ]}
         />
@@ -177,15 +178,18 @@ function SelectField({
 function StatusTag({ status }: { status: string | null }) {
   if (!status) return <span className="text-neutral-400">-</span>;
   const isWon = status === "Won";
+  const isMatching = status === "กำลังจับคู่";
   const isCancelled = status === "ยกเลิกงาน";
   return (
     <span
       className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${
         isWon
           ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
-          : isCancelled
-            ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
-            : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+          : isMatching
+            ? "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
+            : isCancelled
+              ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
+              : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
       }`}
     >
       {status}
