@@ -352,6 +352,10 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
       <DataTable columns={monthlyColumns} rows={monthlyRows} />
     </Slide>,
 
+    <Slide key={`${account.key}-weekly`} eyebrow={`Line OA — ${account.label}`} title="ประวัติรายสัปดาห์" subtitle="10 สัปดาห์ล่าสุด">
+      <DataTable columns={weeklyColumns} rows={weeklyRows} />
+    </Slide>,
+
     ...(funnel
       ? [
           <Slide
@@ -365,10 +369,6 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
         ]
       : []),
 
-    <Slide key={`${account.key}-weekly`} eyebrow={`Line OA — ${account.label}`} title="ประวัติรายสัปดาห์" subtitle="10 สัปดาห์ล่าสุด">
-      <DataTable columns={weeklyColumns} rows={weeklyRows} />
-    </Slide>,
-
     <Slide
       key={`${account.key}-conversion`}
       eyebrow={`Line OA — ${account.label}`}
@@ -378,63 +378,67 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
       <DataTable columns={conversionColumns} rows={conversionRows} highlightLastRow={account.conversion.length > 0} />
     </Slide>,
 
-    <Slide
-      key={`${account.key}-weekly-conversion`}
-      eyebrow={`Line OA — ${account.label}`}
-      title="ตารางวิเคราะห์สัดส่วนผู้ติดตามและผู้สมัครจริงประจำสัปดาห์"
-      subtitle="เทียบผู้ติดตามใหม่รายสัปดาห์กับจำนวนผู้ดูแลที่ลงทะเบียนจริงในสัปดาห์นั้นๆ (10 สัปดาห์ล่าสุด)"
-    >
-      <DataTable columns={weeklyConvColumns} rows={weeklyConvRows} />
-      {latestWeeklyConv && (
-        <div
-          className="mt-6 rounded-2xl border p-5 backdrop-blur-sm shadow-lg"
-          style={{ borderColor: `${palette.accent}66`, backgroundColor: `${palette.surface}ee` }}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-base font-bold" style={{ color: palette.textPrimary }}>
-              📌 รายละเอียดผู้สมัครใหม่ในสัปดาห์ล่าสุด (สัปดาห์ที่ {latestWeeklyConv.weekNumber}: {latestWeeklyConv.rangeLabel})
-            </h3>
-            <span
-              className="rounded-full px-3 py-1 text-xs font-semibold"
-              style={{ backgroundColor: `${palette.accent}33`, color: palette.accent }}
-            >
-              ผู้สมัครใหม่รวม: {latestWeeklyConv.actualRegistrations} คน
-            </span>
-          </div>
-
-          {latestWeeklyConv.caregiverBreakdown.length === 0 ? (
-            <p className="mt-2 text-sm" style={{ color: palette.muted }}>
-              ในสัปดาห์ล่าสุดยังไม่มีผู้สมัครใหม่ในระบบ
-            </p>
-          ) : (
-            <div className="mt-3 flex flex-wrap items-center gap-2.5">
-              <span className="text-sm font-medium" style={{ color: palette.textSecondary }}>
-                ประเภทบุคลากร / คุณวุฒิที่สมัครเข้ามา:
-              </span>
-              {latestWeeklyConv.caregiverBreakdown.map((b) => (
-                <span
-                  key={b.position}
-                  className="inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-xs font-medium"
-                  style={{
-                    borderColor: palette.gridline,
-                    backgroundColor: palette.pagePlane,
-                    color: palette.textPrimary,
-                  }}
-                >
-                  <span className="font-semibold" style={{ color: palette.accent }}>{b.position}</span>
+    ...(!funnel
+      ? [
+          <Slide
+            key={`${account.key}-weekly-conversion`}
+            eyebrow={`Line OA — ${account.label}`}
+            title="ตารางวิเคราะห์สัดส่วนผู้ติดตามและผู้สมัครจริงประจำสัปดาห์"
+            subtitle="เทียบผู้ติดตามใหม่รายสัปดาห์กับจำนวนผู้ดูแลที่ลงทะเบียนจริงในสัปดาห์นั้นๆ (10 สัปดาห์ล่าสุด)"
+          >
+            <DataTable columns={weeklyConvColumns} rows={weeklyConvRows} />
+            {latestWeeklyConv && (
+              <div
+                className="mt-6 rounded-2xl border p-5 backdrop-blur-sm shadow-lg"
+                style={{ borderColor: `${palette.accent}66`, backgroundColor: `${palette.surface}ee` }}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-base font-bold" style={{ color: palette.textPrimary }}>
+                    📌 รายละเอียดผู้สมัครใหม่ในสัปดาห์ล่าสุด (สัปดาห์ที่ {latestWeeklyConv.weekNumber}: {latestWeeklyConv.rangeLabel})
+                  </h3>
                   <span
-                    className="rounded px-1.5 py-0.5 text-[11px] font-bold"
-                    style={{ backgroundColor: `${palette.accent}22`, color: palette.statusGood }}
+                    className="rounded-full px-3 py-1 text-xs font-semibold"
+                    style={{ backgroundColor: `${palette.accent}33`, color: palette.accent }}
                   >
-                    {b.count} คน
+                    ผู้สมัครใหม่รวม: {latestWeeklyConv.actualRegistrations} คน
                   </span>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </Slide>,
+                </div>
+
+                {latestWeeklyConv.caregiverBreakdown.length === 0 ? (
+                  <p className="mt-2 text-sm" style={{ color: palette.muted }}>
+                    ในสัปดาห์ล่าสุดยังไม่มีผู้สมัครใหม่ในระบบ
+                  </p>
+                ) : (
+                  <div className="mt-3 flex flex-wrap items-center gap-2.5">
+                    <span className="text-sm font-medium" style={{ color: palette.textSecondary }}>
+                      ประเภทบุคลากร / คุณวุฒิที่สมัครเข้ามา:
+                    </span>
+                    {latestWeeklyConv.caregiverBreakdown.map((b) => (
+                      <span
+                        key={b.position}
+                        className="inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-xs font-medium"
+                        style={{
+                          borderColor: palette.gridline,
+                          backgroundColor: palette.pagePlane,
+                          color: palette.textPrimary,
+                        }}
+                      >
+                        <span className="font-semibold" style={{ color: palette.accent }}>{b.position}</span>
+                        <span
+                          className="rounded px-1.5 py-0.5 text-[11px] font-bold"
+                          style={{ backgroundColor: `${palette.accent}22`, color: palette.statusGood }}
+                        >
+                          {b.count} คน
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </Slide>,
+        ]
+      : []),
   ];
 }
 

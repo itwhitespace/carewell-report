@@ -291,9 +291,9 @@ function accountSlides(pptx: PptxGenJS, account: AccountDetail) {
       { top: 1.9, highlightLastRow: account.conversion.length > 0 }
     );
 
-  // Weekly conversion table
+  // Weekly conversion table (only for accounts without funnel)
   const weeklyConvData = (account.weeklyConversionData ?? []).slice(-10);
-  if (weeklyConvData.length > 0) {
+  if (!funnel && weeklyConvData.length > 0) {
     const weeklyConvSlide = pptx.addSlide();
     addBackground(weeklyConvSlide);
     addHeader(
