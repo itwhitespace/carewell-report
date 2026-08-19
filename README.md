@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CareWell Report
 
-## Getting Started
+เว็บนำเข้าข้อมูลจาก CSV และสรุปเป็นสไลด์นำเสนอ ข้อมูลเก็บใน Supabase
 
-First, run the development server:
+## เริ่มต้นใช้งาน
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. **สร้างตารางใน Supabase** — เปิด [Supabase SQL Editor](https://supabase.com/dashboard/project/kdbeyokcdnsdenzickkw/sql/new)
+   แล้ววางเนื้อหาจาก [`supabase/schema.sql`](supabase/schema.sql) ทั้งไฟล์ กด Run (ครั้งเดียวพอ)
+2. รันเซิร์ฟเวอร์:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+   ```bash
+   npm run dev
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. เปิด [http://localhost:3000](http://localhost:3000)
+   - **นำเข้าข้อมูล** (`/data`) — อัปโหลดไฟล์ CSV ทั้ง 3 ชุด (อัปโหลดซ้ำได้ ระบบจะอัปเดตแถวเดิมแทนการสร้างซ้ำ)
+   - **สไลด์นำเสนอ** (`/slides`) — สรุปภาพรวมแบบสไลด์ เลื่อนด้วยปุ่มลูกศรซ้าย/ขวาบนคีย์บอร์ด หรือปุ่มบนหน้าจอ
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## โครงสร้างข้อมูล
 
-## Learn More
+- `line_oa_daily_stats` — สถิติผู้ติดตาม Line OA รายวัน ของ `@carewellteam` และ `@carewell` (คอลัมน์ CSV: `date, contacts, targetReaches, blocks`)
+- `caregivers` — ผู้ดูแลที่ลงทะเบียนในระบบ (คอลัมน์ CSV ภาษาไทยตามที่ระบบ export)
 
-To learn more about Next.js, take a look at the following resources:
+ทั้งสองตารางเปิด Row Level Security ไว้และไม่มี policy ให้ฝั่ง anon/public เลย —
+แอปนี้เข้าถึงฐานข้อมูลจากฝั่งเซิร์ฟเวอร์เท่านั้นโดยใช้ `SUPABASE_SERVICE_ROLE_KEY`
+(ดู `src/lib/supabase-admin.ts`) ซึ่งอ่านจาก `.env.local` — **ห้าม commit ไฟล์นี้หรือแชร์ service role key**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.js (App Router) + TypeScript + Tailwind CSS + Supabase + Recharts
