@@ -429,7 +429,7 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
 
     <Slide key={`${account.key}-overview`} eyebrow={`Line OA — ${account.label}`} title="สรุปภาพรวมฐานผู้ติดตาม" subtitle={asOfLabel ?? undefined}>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile label="ผู้ติดตามสะสมทั้งหมด (Total)" value={fmtInt(account.contacts)} accent={palette.statusGood} delta={fmtDelta(account.deltaAbs)} glow="green" />
+        <StatTile label="ผู้ติดตามสะสมทั้งหมด (Total)" value={fmtInt(account.contacts)} accent={palette.statusGood} glow="green" />
         <StatTile label="ผู้ติดตามเปิดรับข้อมูล (Reach)" value={fmtInt(account.targetReaches)} accent={palette.statusGood} delta={account.reachRatePct !== null ? `กลุ่มเป้าหมายคุณภาพ (${fmtPct(account.reachRatePct)})` : null} glow="green" />
         <StatTile label="ยอดการบล็อกสะสม (Blocks)" value={fmtInt(account.blocks)} accent={palette.statusCritical} delta={account.blockRatePct !== null ? `อัตราการบล็อก (${fmtPct(account.blockRatePct)})` : null} glow="red" />
       </div>
