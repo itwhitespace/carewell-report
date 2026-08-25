@@ -586,31 +586,32 @@ function ClosingNotesSlide(notes: ReportNote[], palette: ChartPalette) {
           ยังไม่มีบันทึกเพิ่มเติม — เพิ่มได้ที่หน้า &quot;นำเข้าข้อมูล&quot;
         </p>
       ) : (
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-1.5 sm:gap-2">
           {sortedNotes.map((note, i) => {
             const isDone = note.status === "ดำเนินการแล้ว";
             const statusColor = isDone ? palette.statusGood : "#f97316";
+            const topicColor = isDone ? palette.textPrimary : "#f97316";
             const badgeBg = isDone ? "#10B9811F" : "#F973161F";
             const badgeBorder = isDone ? "#10B98144" : "#F9731644";
 
             return (
               <div
                 key={i}
-                className="rounded-xl border px-4 py-2.5 shadow-sm transition-all"
+                className="rounded-xl border px-3 py-1.5 sm:px-3.5 sm:py-2 shadow-sm transition-all hover:border-orange-500/30"
                 style={{ borderColor: palette.gridline, backgroundColor: palette.surface }}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-start gap-2.5">
+                <div className="flex items-center justify-between gap-2.5">
+                  <div className="flex items-start gap-2 sm:gap-2.5">
                     <span
-                      className="mt-1 h-2 w-2 shrink-0 rounded-full"
+                      className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full"
                       style={{ backgroundColor: statusColor }}
                     />
                     <div>
-                      <p className="text-sm font-semibold" style={{ color: palette.textPrimary }}>
+                      <p className="text-xs sm:text-sm font-semibold" style={{ color: topicColor }}>
                         {note.topic}
                       </p>
                       {note.detail && (
-                        <p className="mt-0.5 whitespace-pre-wrap text-xs" style={{ color: palette.textSecondary }}>
+                        <p className="mt-0.5 whitespace-pre-wrap text-[11px] sm:text-xs leading-tight" style={{ color: palette.textSecondary }}>
                           {note.detail}
                         </p>
                       )}
@@ -618,7 +619,7 @@ function ClosingNotesSlide(notes: ReportNote[], palette: ChartPalette) {
                   </div>
                   {note.status && (
                     <span
-                      className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold"
+                      className="shrink-0 rounded-full px-2 py-0.5 text-[10px] sm:text-[11px] font-bold"
                       style={{
                         backgroundColor: badgeBg,
                         color: statusColor,

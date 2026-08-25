@@ -118,7 +118,7 @@ export function NotesTable({ notes }: { notes: NoteItem[] }) {
                         <td className="whitespace-nowrap px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400">
                           {formatDate(note.created_at)}
                         </td>
-                        <td className="px-6 py-4 font-semibold text-neutral-900 dark:text-neutral-100">
+                        <td className={`px-6 py-4 font-semibold ${isDone ? "text-neutral-900 dark:text-neutral-100" : "text-orange-600 dark:text-orange-400"}`}>
                           {note.topic}
                         </td>
                         <td className="px-6 py-4 text-neutral-600 dark:text-neutral-400">
