@@ -51,14 +51,22 @@ export async function loadSlideData(): Promise<SlideDeckData> {
   const rawNotes = notesRes.data ?? [];
   const recipients = (recipientsRes.data ?? []) as ServiceRecipientRow[];
 
-  const notes = rawNotes.map((n) => {
-    const { status, detail } = parseNoteDetail(n.detail);
-    return {
-      topic: n.topic,
-      detail,
-      status,
-    };
-  });
+  const notes = rawNotes
+    .map((n) => {
+      const { status, detail } = parseNoteDetail(n.detail);
+      return {
+        topic: n.topic,
+        detail,
+        status,
+      };
+    })
+    .sort((a, b) => {
+      const aIsNew = a.status === "ประเด็นใหม่" || a.status !== "ดำเนินการแล้ว";
+      const bIsNew = b.status === "ประเด็นใหม่" || b.status !== "ดำเนินการแล้ว";
+      if (aIsNew && !bIsNew) return -1;
+      if (!aIsNew && bIsNew) return 1;
+      return 0;
+    });
 
   const growth = buildGrowthSeries(lineOaRows);
 

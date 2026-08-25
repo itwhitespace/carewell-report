@@ -571,31 +571,46 @@ function PositionMonthSlide(stats: PositionMonthStats, palette: ChartPalette) {
 }
 
 function ClosingNotesSlide(notes: ReportNote[], palette: ChartPalette) {
+  const sortedNotes = [...notes].sort((a, b) => {
+    const aIsNew = a.status === "ประเด็นใหม่" || a.status !== "ดำเนินการแล้ว";
+    const bIsNew = b.status === "ประเด็นใหม่" || b.status !== "ดำเนินการแล้ว";
+    if (aIsNew && !bIsNew) return -1;
+    if (!aIsNew && bIsNew) return 1;
+    return 0;
+  });
+
   return (
-    <Slide eyebrow="CareWell Report" title="ประเด็นเพิ่มเติม" center={notes.length === 0}>
-      {notes.length === 0 ? (
+    <Slide eyebrow="CareWell Report" title="ประเด็นเพิ่มเติม" center={sortedNotes.length === 0}>
+      {sortedNotes.length === 0 ? (
         <p className="text-sm" style={{ color: palette.muted }}>
           ยังไม่มีบันทึกเพิ่มเติม — เพิ่มได้ที่หน้า &quot;นำเข้าข้อมูล&quot;
         </p>
       ) : (
-        <div className="flex flex-col gap-4">
-          {notes.map((note, i) => {
+        <div className="flex flex-col gap-2.5">
+          {sortedNotes.map((note, i) => {
             const isDone = note.status === "ดำเนินการแล้ว";
+            const statusColor = isDone ? palette.statusGood : "#f97316";
+            const badgeBg = isDone ? "#10B9811F" : "#F973161F";
+            const badgeBorder = isDone ? "#10B98144" : "#F9731644";
+
             return (
               <div
                 key={i}
-                className="rounded-2xl border p-6 shadow-sm"
+                className="rounded-xl border px-4 py-2.5 shadow-sm transition-all"
                 style={{ borderColor: palette.gridline, backgroundColor: palette.surface }}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: palette.accent }} />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <span
+                      className="mt-1 h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: statusColor }}
+                    />
                     <div>
-                      <p className="text-lg font-bold" style={{ color: palette.textPrimary }}>
+                      <p className="text-sm font-semibold" style={{ color: palette.textPrimary }}>
                         {note.topic}
                       </p>
                       {note.detail && (
-                        <p className="mt-1.5 whitespace-pre-wrap text-sm" style={{ color: palette.textSecondary }}>
+                        <p className="mt-0.5 whitespace-pre-wrap text-xs" style={{ color: palette.textSecondary }}>
                           {note.detail}
                         </p>
                       )}
@@ -603,11 +618,11 @@ function ClosingNotesSlide(notes: ReportNote[], palette: ChartPalette) {
                   </div>
                   {note.status && (
                     <span
-                      className="shrink-0 rounded-full px-3 py-1 text-xs font-bold"
+                      className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold"
                       style={{
-                        backgroundColor: isDone ? "#10B98122" : `${palette.accent}22`,
-                        color: isDone ? palette.statusGood : palette.accent,
-                        border: `1px solid ${isDone ? "#10B98144" : `${palette.accent}44`}`,
+                        backgroundColor: badgeBg,
+                        color: statusColor,
+                        border: `1px solid ${badgeBorder}`,
                       }}
                     >
                       {note.status}

@@ -49,7 +49,7 @@ export function NotesTable({ notes }: { notes: NoteItem[] }) {
                 defaultValue="ประเด็นใหม่"
                 className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
               >
-                <option value="ประเด็นใหม่">🔵 ประเด็นใหม่</option>
+                <option value="ประเด็นใหม่">🟠 ประเด็นใหม่</option>
                 <option value="ดำเนินการแล้ว">🟢 ดำเนินการแล้ว</option>
               </select>
             </label>
@@ -100,43 +100,51 @@ export function NotesTable({ notes }: { notes: NoteItem[] }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                {notes.map((note) => {
-                  const isDone = note.status === "ดำเนินการแล้ว";
-                  return (
-                    <tr
-                      key={note.id}
-                      className="hover:bg-neutral-50/50 dark:hover:bg-neutral-950/50"
-                    >
-                      <td className="whitespace-nowrap px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400">
-                        {formatDate(note.created_at)}
-                      </td>
-                      <td className="px-6 py-4 font-semibold text-neutral-900 dark:text-neutral-100">
-                        {note.topic}
-                      </td>
-                      <td className="px-6 py-4 text-neutral-600 dark:text-neutral-400">
-                        {note.detail ? (
-                          <p className="whitespace-pre-wrap">{note.detail}</p>
-                        ) : (
-                          <span className="text-neutral-400 dark:text-neutral-600">-</span>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            isDone
-                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
-                              : "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
-                          }`}
-                        >
+                {(() => {
+                  const sortedNotes = [...notes].sort((a, b) => {
+                    const aIsNew = a.status === "ประเด็นใหม่" || a.status !== "ดำเนินการแล้ว";
+                    const bIsNew = b.status === "ประเด็นใหม่" || b.status !== "ดำเนินการแล้ว";
+                    if (aIsNew && !bIsNew) return -1;
+                    if (!aIsNew && bIsNew) return 1;
+                    return 0;
+                  });
+                  return sortedNotes.map((note) => {
+                    const isDone = note.status === "ดำเนินการแล้ว";
+                    return (
+                      <tr
+                        key={note.id}
+                        className="hover:bg-neutral-50/50 dark:hover:bg-neutral-950/50"
+                      >
+                        <td className="whitespace-nowrap px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400">
+                          {formatDate(note.created_at)}
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-neutral-900 dark:text-neutral-100">
+                          {note.topic}
+                        </td>
+                        <td className="px-6 py-4 text-neutral-600 dark:text-neutral-400">
+                          {note.detail ? (
+                            <p className="whitespace-pre-wrap">{note.detail}</p>
+                          ) : (
+                            <span className="text-neutral-400 dark:text-neutral-600">-</span>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4">
                           <span
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              isDone ? "bg-emerald-500" : "bg-blue-500"
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              isDone
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                : "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300"
                             }`}
-                          />
-                          {note.status}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-right">
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${
+                                isDone ? "bg-emerald-500" : "bg-orange-500"
+                              }`}
+                            />
+                            {note.status}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-3">
                           <button
                             onClick={() => setEditingNote(note)}
@@ -163,7 +171,8 @@ export function NotesTable({ notes }: { notes: NoteItem[] }) {
                       </td>
                     </tr>
                   );
-                })}
+                });
+              })()}
               </tbody>
             </table>
           </div>
@@ -213,7 +222,7 @@ export function NotesTable({ notes }: { notes: NoteItem[] }) {
                   defaultValue={editingNote.status}
                   className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
                 >
-                  <option value="ประเด็นใหม่">🔵 ประเด็นใหม่</option>
+                  <option value="ประเด็นใหม่">🟠 ประเด็นใหม่</option>
                   <option value="ดำเนินการแล้ว">🟢 ดำเนินการแล้ว</option>
                 </select>
               </label>
