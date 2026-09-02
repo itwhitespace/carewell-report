@@ -214,6 +214,7 @@ function accountSlides(pptx: PptxGenJS, account: AccountDetail) {
       `${fmtInt(f.newFriends)} คน`,
       `${fmtInt(f.registerCount)} คน`,
       f.matchingCount > 0 ? `${f.matchingCount} ราย` : "-",
+      f.underCareCount > 0 ? `${f.underCareCount} ราย` : "-",
       f.wonCount > 0 ? `${f.wonCount} ราย (Won)` : "0 ราย",
       f.cancelCount > 0 ? String(f.cancelCount) : "-",
       fmtPct(f.registerRatePct, 2),
@@ -223,6 +224,7 @@ function accountSlides(pptx: PptxGenJS, account: AccountDetail) {
       const totalNewFriends = funnel.reduce((s, f) => s + f.newFriends, 0);
       const totalRegister = funnel.reduce((s, f) => s + f.registerCount, 0);
       const totalMatching = funnel.reduce((s, f) => s + f.matchingCount, 0);
+      const totalUnderCare = funnel.reduce((s, f) => s + f.underCareCount, 0);
       const totalWon = funnel.reduce((s, f) => s + f.wonCount, 0);
       const totalCancel = funnel.reduce((s, f) => s + f.cancelCount, 0);
       const totalRate = totalNewFriends > 0 ? (totalRegister / totalNewFriends) * 100 : null;
@@ -232,6 +234,7 @@ function accountSlides(pptx: PptxGenJS, account: AccountDetail) {
         "-",
         `${fmtInt(totalRegister)} คน`,
         totalMatching > 0 ? `${totalMatching} ราย` : "-",
+        totalUnderCare > 0 ? `${totalUnderCare} ราย` : "-",
         `${fmtInt(totalWon)} ราย (Won)`,
         totalCancel > 0 ? String(totalCancel) : "-",
         fmtPct(totalRate, 2),
@@ -240,14 +243,15 @@ function accountSlides(pptx: PptxGenJS, account: AccountDetail) {
     addDataTable(
       funnelSlide,
       [
-        { label: "เดือน (รอบปี 2569)", width: 1.5 },
-        { label: "ผู้ติดตามสะสม", width: 1.3 },
-        { label: "ผู้ติดตามเพิ่มรายใหม่", width: 1.4 },
-        { label: "จองลงทะเบียนบริการ", width: 1.4 },
-        { label: "กำลังจับคู่", width: 1.0 },
-        { label: "ปิดการขายสำเร็จ", width: 1.2 },
-        { label: "ยกเลิกงาน", width: 0.8 },
-        { label: "อัตราการลงทะเบียน", width: 1.1 },
+        { label: "เดือน (รอบปี 2569)", width: 1.3 },
+        { label: "ผู้ติดตามสะสม", width: 1.2 },
+        { label: "ผู้ติดตามเพิ่มรายใหม่", width: 1.3 },
+        { label: "จองลงทะเบียนบริการ", width: 1.3 },
+        { label: "กำลังจับคู่", width: 0.9 },
+        { label: "อยู่ระหว่างการดูแล", width: 1.1 },
+        { label: "ปิดการขายสำเร็จ", width: 1.1 },
+        { label: "ยกเลิกงาน", width: 0.7 },
+        { label: "อัตราการลงทะเบียน", width: 1.0 },
       ],
       rows,
       { top: 1.6, highlightLastRow: funnel.length > 0 }

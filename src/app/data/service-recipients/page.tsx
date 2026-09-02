@@ -52,6 +52,7 @@ export default async function ServiceRecipientsPage() {
             { value: "", label: "- เลือกสถานะ -" },
             { value: "Won", label: "Won" },
             { value: "กำลังจับคู่", label: "กำลังจับคู่" },
+            { value: "อยู่ระหว่างการดูแล", label: "อยู่ระหว่างการดูแล" },
             { value: "ยกเลิกงาน", label: "ยกเลิกงาน" },
           ]}
         />
@@ -179,6 +180,7 @@ function StatusTag({ status }: { status: string | null }) {
   if (!status) return <span className="text-neutral-400">-</span>;
   const isWon = status === "Won";
   const isMatching = status === "กำลังจับคู่";
+  const isUnderCare = status === "อยู่ระหว่างการดูแล";
   const isCancelled = status === "ยกเลิกงาน";
   return (
     <span
@@ -187,9 +189,11 @@ function StatusTag({ status }: { status: string | null }) {
           ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
           : isMatching
             ? "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
-            : isCancelled
-              ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
-              : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+            : isUnderCare
+              ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+              : isCancelled
+                ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
+                : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
       }`}
     >
       {status}

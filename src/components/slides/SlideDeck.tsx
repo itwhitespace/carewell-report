@@ -314,6 +314,17 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
       align: "right",
     },
     {
+      key: "underCare",
+      label: (
+        <div>
+          อยู่ระหว่างการดูแล
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Under Care)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
       key: "won",
       label: (
         <div>
@@ -349,7 +360,7 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
   ];
 
   const funnelRows: Record<string, React.ReactNode>[] = (funnel ?? []).map((f) => ({
-    month: f.monthLabel,
+    month: shortMonthLabel(f.monthKey),
     friends: `${fmtInt(f.friendCount)} คน`,
     newFriends: `${fmtInt(f.newFriends)} คน`,
     register: (
@@ -360,6 +371,11 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
     matching: (
       <span style={{ color: f.matchingCount > 0 ? "#F59E0B" : undefined, fontWeight: f.matchingCount > 0 ? 600 : 400 }}>
         {f.matchingCount > 0 ? `${f.matchingCount} ราย` : "-"}
+      </span>
+    ),
+    underCare: (
+      <span style={{ color: f.underCareCount > 0 ? "#3B82F6" : undefined, fontWeight: f.underCareCount > 0 ? 600 : 400 }}>
+        {f.underCareCount > 0 ? `${f.underCareCount} ราย` : "-"}
       </span>
     ),
     won: (
@@ -380,6 +396,7 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
     const totalNewFriends = funnel.reduce((s, f) => s + f.newFriends, 0);
     const totalRegister = funnel.reduce((s, f) => s + f.registerCount, 0);
     const totalMatching = funnel.reduce((s, f) => s + f.matchingCount, 0);
+    const totalUnderCare = funnel.reduce((s, f) => s + f.underCareCount, 0);
     const totalWon = funnel.reduce((s, f) => s + f.wonCount, 0);
     const totalCancel = funnel.reduce((s, f) => s + f.cancelCount, 0);
     const totalRate = totalNewFriends > 0 ? (totalRegister / totalNewFriends) * 100 : null;
@@ -390,6 +407,7 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
       newFriends: "-",
       register: <b>{fmtInt(totalRegister)} คน</b>,
       matching: <b>{totalMatching > 0 ? `${totalMatching} ราย` : "-"}</b>,
+      underCare: <b>{totalUnderCare > 0 ? `${totalUnderCare} ราย` : "-"}</b>,
       won: <b>{fmtInt(totalWon)} ราย (Won)</b>,
       cancel: <b>{totalCancel > 0 ? totalCancel : "-"}</b>,
       rate: <b>{fmtPct(totalRate, 2)}</b>,
@@ -451,7 +469,7 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
             title="ตารางบันทึกสถิติช่องทางลูกค้ารายเดือน"
             subtitle="ผู้ติดตาม Line OA, ผู้จองลงทะเบียนบริการ, ปิดการขายสำเร็จ และอัตราการลงทะเบียน"
           >
-            <DataTable columns={funnelColumns} rows={funnelRows} highlightLastRow={funnelRows.length > 0} />
+            <DataTable columns={funnelColumns} rows={funnelRows} highlightLastRow={funnelRows.length > 0} compact />
           </Slide>,
         ]
       : []),

@@ -47,8 +47,9 @@ export default async function EditServiceRecipientPage({
             <option value="">- เลือกสถานะ -</option>
             <option value="Won">Won</option>
             <option value="กำลังจับคู่">กำลังจับคู่</option>
+            <option value="อยู่ระหว่างการดูแล">อยู่ระหว่างการดูแล</option>
             <option value="ยกเลิกงาน">ยกเลิกงาน</option>
-            {row.status && row.status !== "Won" && row.status !== "กำลังจับคู่" && row.status !== "ยกเลิกงาน" && (
+            {row.status && row.status !== "Won" && row.status !== "กำลังจับคู่" && row.status !== "อยู่ระหว่างการดูแล" && row.status !== "ยกเลิกงาน" && (
               <option value={row.status}>{row.status} (เดิม)</option>
             )}
           </select>

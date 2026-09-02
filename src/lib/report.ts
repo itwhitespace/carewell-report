@@ -510,6 +510,7 @@ export type ChannelFunnelStat = {
   newFriends: number;
   registerCount: number;
   matchingCount: number;
+  underCareCount: number;
   wonCount: number;
   cancelCount: number;
   registerRatePct: number | null;
@@ -529,6 +530,7 @@ export function monthlyChannelFunnel(
 
   const registerByMonth = new Map<string, number>();
   const matchingByMonth = new Map<string, number>();
+  const underCareByMonth = new Map<string, number>();
   const wonByMonth = new Map<string, number>();
   const cancelByMonth = new Map<string, number>();
 
@@ -541,6 +543,8 @@ export function monthlyChannelFunnel(
       wonByMonth.set(mk, (wonByMonth.get(mk) ?? 0) + 1);
     } else if (st === "กำลังจับคู่" || st === "matching" || st === "in progress") {
       matchingByMonth.set(mk, (matchingByMonth.get(mk) ?? 0) + 1);
+    } else if (st === "อยู่ระหว่างการดูแล" || st === "under care" || st === "in care" || st === "under_care") {
+      underCareByMonth.set(mk, (underCareByMonth.get(mk) ?? 0) + 1);
     } else if (st === "ยกเลิกงาน" || st === "cancel" || st === "cancelled") {
       cancelByMonth.set(mk, (cancelByMonth.get(mk) ?? 0) + 1);
     }
@@ -549,6 +553,7 @@ export function monthlyChannelFunnel(
   return monthly.map((m) => {
     const registerCount = registerByMonth.get(m.monthKey) ?? 0;
     const matchingCount = matchingByMonth.get(m.monthKey) ?? 0;
+    const underCareCount = underCareByMonth.get(m.monthKey) ?? 0;
     const wonCount = wonByMonth.get(m.monthKey) ?? 0;
     const cancelCount = cancelByMonth.get(m.monthKey) ?? 0;
     const registerRatePct = m.newFollowers > 0 ? (registerCount / m.newFollowers) * 100 : null;
@@ -559,6 +564,7 @@ export function monthlyChannelFunnel(
       newFriends: m.newFollowers,
       registerCount,
       matchingCount,
+      underCareCount,
       wonCount,
       cancelCount,
       registerRatePct,

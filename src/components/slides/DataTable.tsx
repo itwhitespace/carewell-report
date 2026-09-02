@@ -13,10 +13,12 @@ export function DataTable({
   columns,
   rows,
   highlightLastRow,
+  compact,
 }: {
   columns: Column[];
   rows: Record<string, ReactNode>[];
   highlightLastRow?: boolean;
+  compact?: boolean;
 }) {
   const palette = useChartPalette();
 
@@ -36,13 +38,13 @@ export function DataTable({
       className="overflow-x-auto rounded-xl border"
       style={{ borderColor: palette.gridline }}
     >
-      <table className="w-full border-collapse text-sm">
+      <table className={`w-full border-collapse ${compact ? "text-xs sm:text-sm" : "text-sm"}`}>
         <thead>
           <tr style={{ backgroundColor: palette.accent }}>
             {columns.map((col) => (
               <th
                 key={col.key}
-                className="px-3 py-2 text-xs font-semibold uppercase tracking-wide leading-tight"
+                className={`${compact ? "px-2 py-2 text-[11px]" : "px-3 py-2 text-xs"} font-semibold uppercase tracking-wide leading-tight`}
                 style={{
                   color: contrastText(palette.accent),
                   textAlign: col.align ?? "left",
@@ -70,7 +72,7 @@ export function DataTable({
                 {columns.map((col) => (
                   <td
                     key={col.key}
-                    className="whitespace-nowrap px-4 py-2.5"
+                    className={`whitespace-nowrap ${compact ? "px-2.5 py-2" : "px-4 py-2.5"}`}
                     style={{
                       textAlign: col.align ?? "left",
                       color: isLast ? contrastText(palette.accent) : palette.textPrimary,
