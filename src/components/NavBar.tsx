@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/", label: "หน้าแรก" },
   { href: "/data", label: "นำเข้าข้อมูล" },
+  { href: "/flows", label: "ขั้นตอนระบบ (Flows)" },
   { href: "/slides", label: "สไลด์นำเสนอ" },
 ];
 

@@ -114,6 +114,48 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["report_notes"]["Insert"]>;
         Relationships: [];
       };
+      system_flows: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          category: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          category?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["system_flows"]["Insert"]>;
+        Relationships: [];
+      };
+      flow_steps: {
+        Row: {
+          id: string;
+          flow_id: string;
+          step_number: number;
+          title: string;
+          content: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          flow_id: string;
+          step_number: number;
+          title: string;
+          content?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["flow_steps"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

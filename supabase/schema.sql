@@ -70,3 +70,32 @@ create index if not exists caregivers_province_idx on public.caregivers (provinc
 create index if not exists caregivers_status_idx on public.caregivers (status);
 create index if not exists service_recipients_service_date_idx on public.service_recipients (service_date);
 create index if not exists report_notes_sort_idx on public.report_notes (sort_order, created_at);
+
+-- 6) System Flows & Flow Steps (ขั้นตอนการทำงานของระบบ)
+create table if not exists public.system_flows (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  category text default 'General',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists public.flow_steps (
+  id uuid primary key default gen_random_uuid(),
+  flow_id uuid not null references public.system_flows(id) on delete cascade,
+  step_number integer not null,
+  title text not null,
+  content text default '',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.system_flows enable row level security;
+alter table public.flow_steps enable row level security;
+
+create policy "Allow all access to system_flows" on public.system_flows for all using (true) with check (true);
+create policy "Allow all access to flow_steps" on public.flow_steps for all using (true) with check (true);
+
+create index if not exists idx_flow_steps_flow_id on public.flow_steps (flow_id);
+create index if not exists idx_flow_steps_order on public.flow_steps (flow_id, step_number);

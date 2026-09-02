@@ -38,7 +38,7 @@ export default function DataPage() {
         จัดการข้อมูลในระบบโดยตรง — สามารถดูรายชื่อ เพิ่ม แก้ไข หรือลบรายการได้
       </p>
 
-      <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-4">
         <ManualEntryCard
           href="/data/caregivers"
           title="ผู้ดูแลที่ลงทะเบียน"
@@ -50,6 +50,12 @@ export default function DataPage() {
           title="ผู้รับบริการ"
           description="รหัสงาน, วันที่รับบริการ, ระดับการดูแล, รูปแบบการทำงาน, สถานะ"
           accentClass="border-violet-500"
+        />
+        <ManualEntryCard
+          href="/flows"
+          title="ขั้นตอนระบบ (Flows)"
+          description="บันทึกและจัดการขั้นตอนระบบทีละขั้นตอน Notion-like Editor"
+          accentClass="border-blue-500"
         />
         <ManualEntryCard
           href="/data/notes"
