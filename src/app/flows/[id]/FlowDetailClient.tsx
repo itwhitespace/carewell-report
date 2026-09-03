@@ -197,7 +197,7 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
+    <main className="mx-auto max-w-[1905px] w-full px-6 py-8">
       {/* Confirmation Modal for Unsaved Changes */}
       <UnsavedModal
         isOpen={pendingAction !== null}
@@ -314,9 +314,9 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
       </div>
 
       {/* Content Layout: Steps Sidebar + Main Editor */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         {/* Left Sidebar */}
-        <div className="lg:col-span-1">
+        <div className="xl:col-span-1">
           <FlowStepSidebar
             steps={steps}
             selectedStepId={selectedStep?.id ?? null}
@@ -328,7 +328,7 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
         </div>
 
         {/* Right Main Editor */}
-        <div className="lg:col-span-3">
+        <div className="xl:col-span-4">
           {selectedStep ? (
             <FlowEditor
               step={selectedStep}

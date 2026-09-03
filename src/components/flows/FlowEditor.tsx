@@ -39,7 +39,7 @@ export function FlowEditor({
   onSaveStep: (stepId: string, title: string, content: string) => Promise<void>;
   onDraftChange?: (isDirty: boolean, title: string, content: string) => void;
 }) {
-  const [viewMode, setViewMode] = useState<"read" | "edit" | "split">("edit");
+  const [viewMode, setViewMode] = useState<"read" | "edit" | "split">("split");
   const [title, setTitle] = useState(step.title);
   const [content, setContent] = useState(step.content ?? "");
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "error">("saved");
@@ -438,26 +438,29 @@ export function FlowEditor({
         </div>
       ) : viewMode === "split" ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
-          {/* Left Column: Editor */}
-          <div>
-            <div className="mb-2 text-xs font-bold text-neutral-600 dark:text-neutral-400 flex items-center justify-between">
-              <span>📝 ช่องพิมพ์ข้อความ (Markdown Editor)</span>
+          {/* Left Column: Editor & Image Gallery */}
+          <div className="flex flex-col">
+            <div className="mb-2 text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center justify-between">
+              <span>📝 ช่องแก้ไขเนื้อหา (Markdown & Image Input)</span>
             </div>
             {renderToolbar()}
             {renderTextarea()}
             {renderImageGallery()}
           </div>
 
-          {/* Right Column: Real-time Live Rendered Preview */}
+          {/* Right Column: Real-time Notion-like Live Rendered Preview */}
           <div className="flex flex-col">
             <div className="mb-2 text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Eye className="h-3.5 w-3.5" />
-                <span>ตัวอย่างเอกสารและรูปภาพจริง (Live Preview)</span>
+                <span>ตัวอย่างเอกสารจริง (Notion-like Live Document Preview)</span>
               </span>
-              <span className="text-[10px] text-neutral-400 font-normal">แสดงผลรูปจริงทันทีขณะพิมพ์</span>
+              <span className="text-[10px] text-neutral-400 font-normal">แสดงผลรูปภาพและจัดรูปแบบจริงทันที</span>
             </div>
-            <div className="flex-1 rounded-xl border border-neutral-200 bg-neutral-50/50 p-5 dark:border-neutral-800 dark:bg-neutral-950/50 max-h-[750px] overflow-y-auto shadow-inner">
+            <div className="flex-1 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 overflow-y-auto max-h-[800px] min-h-[500px]">
+              <div className="mb-4 pb-3 border-b border-neutral-100 dark:border-neutral-800">
+                <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{title}</h1>
+              </div>
               <MarkdownViewer content={content} />
             </div>
           </div>
