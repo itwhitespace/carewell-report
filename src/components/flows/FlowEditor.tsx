@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Bold,
   Italic,
@@ -24,6 +24,8 @@ import {
   Palette,
   Upload,
   Save,
+  Columns,
+  Trash2,
 } from "lucide-react";
 import { MarkdownViewer } from "./MarkdownViewer";
 import type { FlowStep } from "@/lib/flows";
@@ -37,7 +39,7 @@ export function FlowEditor({
   onSaveStep: (stepId: string, title: string, content: string) => Promise<void>;
   onDraftChange?: (isDirty: boolean, title: string, content: string) => void;
 }) {
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [viewMode, setViewMode] = useState<"read" | "edit" | "split">("edit");
   const [title, setTitle] = useState(step.title);
   const [content, setContent] = useState(step.content ?? "");
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "error">("saved");
@@ -60,6 +62,21 @@ export function FlowEditor({
   useEffect(() => {
     onDraftChange?.(isDirty, title, content);
   }, [isDirty, title, content, onDraftChange]);
+
+  // Extract inserted markdown images for Inline Image Preview Gallery
+  const extractedImages = useMemo(() => {
+    const matches = Array.from(content.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g));
+    return matches.map((match, idx) => ({
+      id: idx,
+      alt: match[1] || "รูปภาพประกอบ",
+      src: match[2],
+      fullMarkdown: match[0],
+    }));
+  }, [content]);
+
+  const handleRemoveImage = (fullMarkdown: string) => {
+    setContent((prev) => prev.replace(fullMarkdown, "").trim());
+  };
 
   // Manual save handler
   const handleManualSave = useCallback(async () => {
@@ -173,6 +190,142 @@ export function FlowEditor({
     }
   }
 
+  // Render formatting toolbar
+  const renderToolbar = () => (
+    <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 p-2.5 dark:border-neutral-800 dark:bg-neutral-950">
+      <ToolbarButton onClick={() => insertLinePrefix("# ")} title="Header 1 (#)" icon={Heading1} />
+      <ToolbarButton onClick={() => insertLinePrefix("## ")} title="Header 2 (##)" icon={Heading2} />
+      <ToolbarButton onClick={() => insertLinePrefix("### ")} title="Header 3 (###)" icon={Heading3} />
+
+      <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
+
+      <ToolbarButton onClick={() => insertSnippet("**", "**")} title="Bold (**text**)" icon={Bold} />
+      <ToolbarButton onClick={() => insertSnippet("*", "*")} title="Italic (*text*)" icon={Italic} />
+      <ToolbarButton onClick={() => insertSnippet("`", "`")} title="Inline Code (`code`)" icon={Code} />
+
+      <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
+
+      <ToolbarButton onClick={() => insertSnippet("==", "==")} title="ไฮไลต์สีเหลือง (==ข้อความ==)" icon={Highlighter} label="เหลือง" />
+      <ToolbarButton onClick={() => insertSnippet('<mark class="green">', "</mark>")} title="ไฮไลต์สีเขียว" icon={Highlighter} label="เขียว" />
+      <ToolbarButton onClick={() => insertSnippet('<mark class="blue">', "</mark>")} title="ไฮไลต์สีฟ้า" icon={Highlighter} label="ฟ้า" />
+      <ToolbarButton onClick={() => insertSnippet('<mark class="rose">', "</mark>")} title="ไฮไลต์สีแดง" icon={Highlighter} label="ชมพู" />
+
+      <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
+
+      <ToolbarButton onClick={() => insertSnippet('<span class="red">', "</span>")} title="ตัวหนังสือสีแดง" icon={Palette} label="ตัวอักษรแดง" />
+      <ToolbarButton onClick={() => insertSnippet('<span class="blue">', "</span>")} title="ตัวหนังสือสีฟ้า" icon={Palette} label="ตัวอักษรฟ้า" />
+
+      <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
+
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        className="flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300 transition-colors"
+        title="เลือกรูปภาพจากเครื่อง หรือวางรูป (Ctrl+V) ลงในช่องพิมพ์"
+      >
+        <ImageIcon className="h-3.5 w-3.5" />
+        <span>แทรกรูปภาพ</span>
+      </button>
+
+      <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
+
+      <ToolbarButton onClick={() => insertLinePrefix("- ")} title="Bullet List (-)" icon={List} />
+      <ToolbarButton onClick={() => insertLinePrefix("1. ")} title="Numbered List (1.)" icon={ListOrdered} />
+      <ToolbarButton onClick={() => insertLinePrefix("- [ ] ")} title="Checklist (- [ ])" icon={CheckSquare} />
+
+      <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
+
+      <ToolbarButton onClick={() => insertCallout("NOTE")} title="Insert Note Box" icon={Info} label="Note" />
+      <ToolbarButton onClick={() => insertCallout("TIP")} title="Insert Tip Box" icon={Lightbulb} label="Tip" />
+      <ToolbarButton onClick={() => insertCallout("WARNING")} title="Insert Warning Box" icon={AlertTriangle} label="Warning" />
+      <ToolbarButton onClick={insertCodeBlock} title="Insert Code Block" icon={Code} label="Code" />
+      <ToolbarButton onClick={() => insertLinePrefix("---\n")} title="Horizontal Divider" icon={Minus} />
+    </div>
+  );
+
+  // Render textarea and hints
+  const renderTextarea = () => (
+    <>
+      <textarea
+        ref={textareaRef}
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        onPaste={handlePaste}
+        onDrop={handleDrop}
+        placeholder="พิมพ์เนื้อหาขั้นตอน UI/UX Layout ที่นี่... (สามารถกดวางรูปภาพ Ctrl+V หรือลากรูปภาพมาวางได้โดยตรง)"
+        rows={viewMode === "split" ? 14 : 18}
+        className="w-full rounded-xl border border-neutral-300 bg-white p-4 font-mono text-sm leading-relaxed text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+      />
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-500 dark:text-neutral-400 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+        <span>🖼️ **คำแนะนำ**: กดปุ่ม &quot;แทรกรูปภาพ&quot; หรือกดวางรูปภาพ (**Ctrl + V**) / ลากไฟล์รูปมาวางในช่องพิมพ์ได้ทันที</span>
+        <div className="flex items-center gap-3">
+          <span className="text-neutral-400">💡 กด <kbd className="px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px] text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">Ctrl + S</kbd> เพื่อบันทึก</span>
+          <button
+            type="button"
+            onClick={handleManualSave}
+            disabled={saveStatus === "saving" || !isDirty}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              isDirty
+                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                : "bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500 disabled:opacity-50"
+            }`}
+          >
+            <Save className="h-3.5 w-3.5" />
+            <span>{isDirty ? "บันทึกข้อมูล" : "บันทึกแล้ว"}</span>
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
+  // Render Inline Image Preview Gallery
+  const renderImageGallery = () => (
+    <>
+      {extractedImages.length > 0 && (
+        <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                🖼️ รูปภาพประกอบจริงที่แทรกในขั้นตอน ({extractedImages.length} รูป)
+              </span>
+            </div>
+            <span className="text-[11px] text-neutral-400">แสดงรูปจริงให้เห็นทันที ไม่ต้องกดสลับหน้า</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {extractedImages.map((img) => (
+              <div
+                key={img.id}
+                className="group relative rounded-xl border border-neutral-200 bg-white p-2 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 flex flex-col justify-between"
+              >
+                <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-950 flex items-center justify-center border border-neutral-100 dark:border-neutral-800">
+                  <img
+                    src={img.src}
+                    alt={img.alt}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="truncate text-[10px] font-medium text-neutral-700 dark:text-neutral-300 max-w-[100px]" title={img.alt}>
+                    📷 {img.alt}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(img.fullMarkdown)}
+                    title="ลบรูปภาพนี้ออกจากเนื้อหา"
+                    className="rounded-md p-1 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/50 transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
       {/* Hidden file input for Image Upload */}
@@ -189,10 +342,10 @@ export function FlowEditor({
         }}
       />
 
-      {/* Header bar: Title, Mode toggle, Auto-save status */}
+      {/* Header bar: Title, Mode toggle, Manual save button */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
         <div className="flex-1">
-          {isEditMode ? (
+          {viewMode !== "read" ? (
             <input
               type="text"
               value={title}
@@ -241,126 +394,79 @@ export function FlowEditor({
           {/* Mode Switcher Buttons */}
           <div className="inline-flex rounded-lg border border-neutral-200 bg-neutral-100 p-1 dark:border-neutral-800 dark:bg-neutral-950">
             <button
-              onClick={() => setIsEditMode(false)}
+              onClick={() => setViewMode("read")}
               className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
-                !isEditMode
+                viewMode === "read"
                   ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-100"
                   : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
               }`}
             >
               <Eye className="h-3.5 w-3.5" />
-              อ่านเนื้อหา (Read)
+              <span>อ่านเนื้อหา (Read)</span>
             </button>
             <button
-              onClick={() => setIsEditMode(true)}
+              onClick={() => setViewMode("edit")}
               className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
-                isEditMode
+                viewMode === "edit"
                   ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-100"
                   : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
               }`}
             >
               <Edit3 className="h-3.5 w-3.5" />
-              แก้ไข (Edit)
+              <span>แก้ไข (Edit)</span>
+            </button>
+            <button
+              onClick={() => setViewMode("split")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
+                viewMode === "split"
+                  ? "bg-blue-600 text-white shadow-sm dark:bg-blue-600"
+                  : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+              }`}
+              title="ดูหน้าแก้ไขและตัวอย่างรูปภาพ/เอกสารจริงแบบสองช่องคู่ขนาน"
+            >
+              <Columns className="h-3.5 w-3.5" />
+              <span>ตัวอย่างสด (Split)</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Editor Body */}
-      {isEditMode ? (
+      {viewMode === "read" ? (
         <div className="p-6">
-          {/* Formatting Toolbar */}
-          <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 p-2.5 dark:border-neutral-800 dark:bg-neutral-950">
-            {/* Headings */}
-            <ToolbarButton onClick={() => insertLinePrefix("# ")} title="Header 1 (#)" icon={Heading1} />
-            <ToolbarButton onClick={() => insertLinePrefix("## ")} title="Header 2 (##)" icon={Heading2} />
-            <ToolbarButton onClick={() => insertLinePrefix("### ")} title="Header 3 (###)" icon={Heading3} />
-
-            <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
-
-            {/* Basic Styling */}
-            <ToolbarButton onClick={() => insertSnippet("**", "**")} title="Bold (**text**)" icon={Bold} />
-            <ToolbarButton onClick={() => insertSnippet("*", "*")} title="Italic (*text*)" icon={Italic} />
-            <ToolbarButton onClick={() => insertSnippet("`", "`")} title="Inline Code (`code`)" icon={Code} />
-
-            <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
-
-            {/* Color Highlights (ไฮไลต์สี) */}
-            <ToolbarButton onClick={() => insertSnippet("==", "==")} title="ไฮไลต์สีเหลือง (==ข้อความ==)" icon={Highlighter} label="เหลือง" />
-            <ToolbarButton onClick={() => insertSnippet('<mark class="green">', "</mark>")} title="ไฮไลต์สีเขียว" icon={Highlighter} label="เขียว" />
-            <ToolbarButton onClick={() => insertSnippet('<mark class="blue">', "</mark>")} title="ไฮไลต์สีฟ้า" icon={Highlighter} label="ฟ้า" />
-            <ToolbarButton onClick={() => insertSnippet('<mark class="rose">', "</mark>")} title="ไฮไลต์สีแดง" icon={Highlighter} label="ชมพู" />
-
-            <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
-
-            {/* Text Colors (สีตัวหนังสือ) */}
-            <ToolbarButton onClick={() => insertSnippet('<span class="red">', "</span>")} title="ตัวหนังสือสีแดง" icon={Palette} label="ตัวอักษรแดง" />
-            <ToolbarButton onClick={() => insertSnippet('<span class="blue">', "</span>")} title="ตัวหนังสือสีฟ้า" icon={Palette} label="ตัวอักษรฟ้า" />
-
-            <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
-
-            {/* Image Upload & Insertion */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300 transition-colors"
-              title="เลือกรูปภาพจากเครื่อง หรือวางรูป (Ctrl+V) ลงในช่องพิมพ์"
-            >
-              <ImageIcon className="h-3.5 w-3.5" />
-              <span>แทรกรูปภาพ</span>
-            </button>
-
-            <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
-
-            {/* Lists & Extras */}
-            <ToolbarButton onClick={() => insertLinePrefix("- ")} title="Bullet List (-)" icon={List} />
-            <ToolbarButton onClick={() => insertLinePrefix("1. ")} title="Numbered List (1.)" icon={ListOrdered} />
-            <ToolbarButton onClick={() => insertLinePrefix("- [ ] ")} title="Checklist (- [ ])" icon={CheckSquare} />
-
-            <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
-
-            {/* Callouts */}
-            <ToolbarButton onClick={() => insertCallout("NOTE")} title="Insert Note Box" icon={Info} label="Note" />
-            <ToolbarButton onClick={() => insertCallout("TIP")} title="Insert Tip Box" icon={Lightbulb} label="Tip" />
-            <ToolbarButton onClick={() => insertCallout("WARNING")} title="Insert Warning Box" icon={AlertTriangle} label="Warning" />
-            <ToolbarButton onClick={insertCodeBlock} title="Insert Code Block" icon={Code} label="Code" />
-            <ToolbarButton onClick={() => insertLinePrefix("---\n")} title="Horizontal Divider" icon={Minus} />
+          <MarkdownViewer content={content} />
+        </div>
+      ) : viewMode === "split" ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+          {/* Left Column: Editor */}
+          <div>
+            <div className="mb-2 text-xs font-bold text-neutral-600 dark:text-neutral-400 flex items-center justify-between">
+              <span>📝 ช่องพิมพ์ข้อความ (Markdown Editor)</span>
+            </div>
+            {renderToolbar()}
+            {renderTextarea()}
+            {renderImageGallery()}
           </div>
 
-          {/* Markdown Input Area with Paste & Drag-and-Drop Image handlers */}
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onPaste={handlePaste}
-            onDrop={handleDrop}
-            placeholder="พิมพ์เนื้อหาขั้นตอน UI/UX Layout ที่นี่... (สามารถกดวางรูปภาพ Ctrl+V หรือลากรูปภาพมาวางได้โดยตรง)"
-            rows={18}
-            className="w-full rounded-xl border border-neutral-300 bg-white p-4 font-mono text-sm leading-relaxed text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-          />
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-500 dark:text-neutral-400 pt-2 border-t border-neutral-100 dark:border-neutral-800">
-            <span>🖼️ **คำแนะนำ**: กดปุ่ม &quot;แทรกรูปภาพ&quot; หรือกดวางรูปภาพ (**Ctrl + V**) / ลากไฟล์รูปมาวางในช่องพิมพ์ได้ทันที</span>
-            <div className="flex items-center gap-3">
-              <span className="text-neutral-400">💡 กด <kbd className="px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px] text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">Ctrl + S</kbd> เพื่อบันทึก</span>
-              <button
-                type="button"
-                onClick={handleManualSave}
-                disabled={saveStatus === "saving" || !isDirty}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                  isDirty
-                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                    : "bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500 disabled:opacity-50"
-                }`}
-              >
-                <Save className="h-3.5 w-3.5" />
-                <span>{isDirty ? "บันทึกข้อมูล" : "บันทึกแล้ว"}</span>
-              </button>
+          {/* Right Column: Real-time Live Rendered Preview */}
+          <div className="flex flex-col">
+            <div className="mb-2 text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Eye className="h-3.5 w-3.5" />
+                <span>ตัวอย่างเอกสารและรูปภาพจริง (Live Preview)</span>
+              </span>
+              <span className="text-[10px] text-neutral-400 font-normal">แสดงผลรูปจริงทันทีขณะพิมพ์</span>
+            </div>
+            <div className="flex-1 rounded-xl border border-neutral-200 bg-neutral-50/50 p-5 dark:border-neutral-800 dark:bg-neutral-950/50 max-h-[750px] overflow-y-auto shadow-inner">
+              <MarkdownViewer content={content} />
             </div>
           </div>
         </div>
       ) : (
         <div className="p-6">
-          <MarkdownViewer content={content} />
+          {renderToolbar()}
+          {renderTextarea()}
+          {renderImageGallery()}
         </div>
       )}
     </div>
