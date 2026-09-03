@@ -23,6 +23,7 @@ import {
   Highlighter,
   Palette,
   Upload,
+  Save,
 } from "lucide-react";
 import { MarkdownViewer } from "./MarkdownViewer";
 import type { FlowStep } from "@/lib/flows";
@@ -30,9 +31,11 @@ import type { FlowStep } from "@/lib/flows";
 export function FlowEditor({
   step,
   onSaveStep,
+  onDraftChange,
 }: {
   step: FlowStep;
   onSaveStep: (stepId: string, title: string, content: string) => Promise<void>;
+  onDraftChange?: (isDirty: boolean, title: string, content: string) => void;
 }) {
   const [isEditMode, setIsEditMode] = useState(false);
   const [title, setTitle] = useState(step.title);
@@ -42,47 +45,53 @@ export function FlowEditor({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isFirstRender = useRef(true);
 
   // Sync state when step prop changes
   useEffect(() => {
     setTitle(step.title);
     setContent(step.content ?? "");
     setSaveStatus("saved");
-    isFirstRender.current = true;
   }, [step.id, step.title, step.content]);
 
-  // Save handler
-  const performSave = useCallback(
-    async (newTitle: string, newContent: string) => {
-      try {
-        setSaveStatus("saving");
-        await onSaveStep(step.id, newTitle, newContent);
-        setSaveStatus("saved");
-        const now = new Date();
-        setLastSavedTime(now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
-      } catch (err) {
-        console.error("Auto-save failed:", err);
-        setSaveStatus("error");
-      }
-    },
-    [step.id, onSaveStep]
-  );
+  // Calculate dirty state
+  const isDirty = title !== step.title || content !== (step.content ?? "");
 
-  // Auto-save debounced effect (1000ms)
+  // Notify parent of draft changes
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
+    onDraftChange?.(isDirty, title, content);
+  }, [isDirty, title, content, onDraftChange]);
+
+  // Manual save handler
+  const handleManualSave = useCallback(async () => {
+    try {
+      setSaveStatus("saving");
+      await onSaveStep(step.id, title, content);
+      setSaveStatus("saved");
+      const now = new Date();
+      setLastSavedTime(
+        now.toLocaleTimeString("th-TH", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+      );
+    } catch (err) {
+      console.error("Manual save failed:", err);
+      setSaveStatus("error");
     }
+  }, [step.id, title, content, onSaveStep]);
 
-    setSaveStatus("unsaved");
-    const timer = setTimeout(() => {
-      performSave(title, content);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [title, content, performSave]);
+  // Keyboard shortcut Ctrl+S / Cmd+S
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        handleManualSave();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleManualSave]);
 
   // Insert snippet helper into textarea
   function insertSnippet(prefix: string, suffix = "") {
@@ -198,27 +207,36 @@ export function FlowEditor({
 
         {/* Mode switch & save indicator */}
         <div className="flex items-center gap-3">
-          {/* Status Badge */}
-          <div className="flex items-center gap-1.5 text-xs">
-            {saveStatus === "saving" && (
-              <span className="flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+          {/* Manual Save Button */}
+          <button
+            type="button"
+            onClick={handleManualSave}
+            disabled={saveStatus === "saving" || (!isDirty && saveStatus === "saved")}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold shadow-sm transition-all ${
+              saveStatus === "saving"
+                ? "bg-amber-500 text-white cursor-wait opacity-80"
+                : isDirty
+                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20 active:scale-95 animate-pulse"
+                : "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+            }`}
+          >
+            {saveStatus === "saving" ? (
+              <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                กำลังบันทึก...
-              </span>
-            )}
-            {saveStatus === "saved" && (
-              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                <span>กำลังบันทึก...</span>
+              </>
+            ) : isDirty ? (
+              <>
+                <Save className="h-3.5 w-3.5" />
+                <span>บันทึกข้อมูล</span>
+              </>
+            ) : (
+              <>
                 <Check className="h-3.5 w-3.5" />
-                บันทึกแล้ว {lastSavedTime ? `(${lastSavedTime})` : ""}
-              </span>
+                <span>บันทึกแล้ว {lastSavedTime ? `(${lastSavedTime})` : ""}</span>
+              </>
             )}
-            {saveStatus === "unsaved" && (
-              <span className="text-neutral-400 dark:text-neutral-500">มีการเปลี่ยนแปลง...</span>
-            )}
-            {saveStatus === "error" && (
-              <span className="font-medium text-red-600 dark:text-red-400">เกิดข้อผิดพลาดในการบันทึก</span>
-            )}
-          </div>
+          </button>
 
           {/* Mode Switcher Buttons */}
           <div className="inline-flex rounded-lg border border-neutral-200 bg-neutral-100 p-1 dark:border-neutral-800 dark:bg-neutral-950">
@@ -320,9 +338,24 @@ export function FlowEditor({
             rows={18}
             className="w-full rounded-xl border border-neutral-300 bg-white p-4 font-mono text-sm leading-relaxed text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
           />
-          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-400 dark:text-neutral-500">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-500 dark:text-neutral-400 pt-2 border-t border-neutral-100 dark:border-neutral-800">
             <span>🖼️ **คำแนะนำ**: กดปุ่ม &quot;แทรกรูปภาพ&quot; หรือกดวางรูปภาพ (**Ctrl + V**) / ลากไฟล์รูปมาวางในช่องพิมพ์ได้ทันที</span>
-            <span>💡 **Auto-save**: ระบบบันทึกอัตโนมัติเมื่อหยุดพิมพ์ 1 วินาที</span>
+            <div className="flex items-center gap-3">
+              <span className="text-neutral-400">💡 กด <kbd className="px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px] text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">Ctrl + S</kbd> เพื่อบันทึก</span>
+              <button
+                type="button"
+                onClick={handleManualSave}
+                disabled={saveStatus === "saving" || !isDirty}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                  isDirty
+                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                    : "bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500 disabled:opacity-50"
+                }`}
+              >
+                <Save className="h-3.5 w-3.5" />
+                <span>{isDirty ? "บันทึกข้อมูล" : "บันทึกแล้ว"}</span>
+              </button>
+            </div>
           </div>
         </div>
       ) : (

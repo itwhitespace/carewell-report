@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, Edit2, Save, Trash2, Check, ExternalLink } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Edit2, Check } from "lucide-react";
 import { FlowStepSidebar } from "@/components/flows/FlowStepSidebar";
 import { FlowEditor } from "@/components/flows/FlowEditor";
+import { UnsavedModal } from "@/components/flows/UnsavedModal";
 import {
   createStepAction,
   deleteStepAction,
@@ -14,7 +15,14 @@ import {
 } from "../actions";
 import type { SystemFlow, FlowStep } from "@/lib/flows";
 
+type PendingAction =
+  | { type: "navigate"; url: string }
+  | { type: "select_step"; stepId: string }
+  | { type: "create_step"; title: string }
+  | { type: "delete_step"; stepId: string };
+
 export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
+  const router = useRouter();
   const [flow, setFlow] = useState<SystemFlow>(initialFlow);
   const [steps, setSteps] = useState<FlowStep[]>(initialFlow.steps ?? []);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(
@@ -26,7 +34,30 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
   const [flowDesc, setFlowDesc] = useState(flow.description ?? "");
   const [flowCat, setFlowCat] = useState(flow.category ?? "General");
 
+  // Track dirty state and draft content from FlowEditor
+  const [isDirty, setIsDirty] = useState(false);
+  const [draftData, setDraftData] = useState<{ title: string; content: string } | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [isSavingUnsaved, setIsSavingUnsaved] = useState(false);
+
   const selectedStep = steps.find((s) => s.id === selectedStepId) ?? steps[0] ?? null;
+
+  // Prevent closing tab / refreshing when dirty
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  const handleDraftChange = useCallback((dirty: boolean, title: string, content: string) => {
+    setIsDirty(dirty);
+    setDraftData({ title, content });
+  }, []);
 
   async function handleSaveHeader(e: React.FormEvent) {
     e.preventDefault();
@@ -49,6 +80,7 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
     setSteps((prev) =>
       prev.map((s) => (s.id === stepId ? { ...s, title, content } : s))
     );
+    setIsDirty(false);
   }
 
   async function handleCreateStep(title: string) {
@@ -57,6 +89,7 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
     const newStep = await createStepAction(flow.id, formData);
     setSteps((prev) => [...prev, newStep]);
     setSelectedStepId(newStep.id);
+    setIsDirty(false);
   }
 
   async function handleDeleteStep(stepId: string) {
@@ -66,6 +99,7 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
     if (selectedStepId === stepId) {
       setSelectedStepId(updated.length > 0 ? updated[0].id : null);
     }
+    setIsDirty(false);
   }
 
   async function handleReorderSteps(stepIds: string[]) {
@@ -78,17 +112,112 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
     setSteps(reordered);
   }
 
+  // Interceptors checking for dirty state before executing actions
+  function handleNavigateBackRequest(e: React.MouseEvent) {
+    e.preventDefault();
+    if (isDirty) {
+      setPendingAction({ type: "navigate", url: "/flows" });
+    } else {
+      router.push("/flows");
+    }
+  }
+
+  function handleSelectStepRequest(stepId: string) {
+    if (stepId === selectedStepId) return;
+    if (isDirty) {
+      setPendingAction({ type: "select_step", stepId });
+    } else {
+      setSelectedStepId(stepId);
+    }
+  }
+
+  async function handleCreateStepRequest(title: string) {
+    if (isDirty) {
+      setPendingAction({ type: "create_step", title });
+    } else {
+      await handleCreateStep(title);
+    }
+  }
+
+  async function handleDeleteStepRequest(stepId: string) {
+    if (isDirty) {
+      setPendingAction({ type: "delete_step", stepId });
+    } else {
+      await handleDeleteStep(stepId);
+    }
+  }
+
+  // Pending action execution helper
+  async function executePendingAction(action: PendingAction) {
+    switch (action.type) {
+      case "navigate":
+        router.push(action.url);
+        break;
+      case "select_step":
+        setSelectedStepId(action.stepId);
+        break;
+      case "create_step":
+        await handleCreateStep(action.title);
+        break;
+      case "delete_step":
+        await handleDeleteStep(action.stepId);
+        break;
+    }
+  }
+
+  // Modal Handlers
+  async function handleSaveAndContinue() {
+    if (!selectedStepId || !draftData) return;
+    try {
+      setIsSavingUnsaved(true);
+      await handleSaveStep(selectedStepId, draftData.title, draftData.content);
+      const action = pendingAction;
+      setPendingAction(null);
+      if (action) {
+        await executePendingAction(action);
+      }
+    } catch (err) {
+      console.error("Failed to save unsaved step:", err);
+    } finally {
+      setIsSavingUnsaved(false);
+    }
+  }
+
+  async function handleDiscardAndContinue() {
+    setIsDirty(false);
+    const action = pendingAction;
+    setPendingAction(null);
+    if (action) {
+      await executePendingAction(action);
+    }
+  }
+
+  function handleCancelPending() {
+    setPendingAction(null);
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
+      {/* Confirmation Modal for Unsaved Changes */}
+      <UnsavedModal
+        isOpen={pendingAction !== null}
+        stepTitle={selectedStep?.title}
+        onSaveAndContinue={handleSaveAndContinue}
+        onDiscardAndContinue={handleDiscardAndContinue}
+        onCancel={handleCancelPending}
+        isSaving={isSavingUnsaved}
+      />
+
       {/* Top navigation link */}
       <div className="mb-6 flex items-center justify-between">
-        <Link
+        <a
           href="/flows"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-neutral-600 hover:text-blue-600 dark:text-neutral-400 dark:hover:text-blue-400 transition-colors"
+          onClick={handleNavigateBackRequest}
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-neutral-600 hover:text-blue-600 dark:text-neutral-400 dark:hover:text-blue-400 transition-colors cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>กลับไปหน้าขั้นตอนทั้งหมด</span>
-        </Link>
+        </a>
       </div>
 
       {/* Header Info Banner */}
@@ -191,9 +320,9 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
           <FlowStepSidebar
             steps={steps}
             selectedStepId={selectedStep?.id ?? null}
-            onSelectStep={(id) => setSelectedStepId(id)}
-            onCreateStep={handleCreateStep}
-            onDeleteStep={handleDeleteStep}
+            onSelectStep={handleSelectStepRequest}
+            onCreateStep={handleCreateStepRequest}
+            onDeleteStep={handleDeleteStepRequest}
             onReorderSteps={handleReorderSteps}
           />
         </div>
@@ -201,7 +330,11 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
         {/* Right Main Editor */}
         <div className="lg:col-span-3">
           {selectedStep ? (
-            <FlowEditor step={selectedStep} onSaveStep={handleSaveStep} />
+            <FlowEditor
+              step={selectedStep}
+              onSaveStep={handleSaveStep}
+              onDraftChange={handleDraftChange}
+            />
           ) : (
             <div className="rounded-2xl border border-dashed border-neutral-300 p-12 text-center text-sm text-neutral-400 dark:border-neutral-800">
               ยังไม่มีขั้นตอนที่เลือก — กรุณากด &quot;เพิ่มขั้นตอน&quot; ทางด้านซ้าย
