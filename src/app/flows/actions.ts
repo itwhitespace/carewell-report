@@ -131,3 +131,51 @@ export async function uploadFlowImageAction(formData: FormData): Promise<string>
 
   return publicUrlData.publicUrl;
 }
+
+export async function deleteFlowImageAction(imageUrl: string): Promise<boolean> {
+  try {
+    const supabase = getSupabaseAdmin();
+    const match = imageUrl.match(/\/storage\/v1\/object\/public\/flow-images\/(.+)$/);
+    if (!match) return false;
+
+    const fileName = match[1];
+    const { error } = await supabase.storage
+      .from("flow-images")
+      .remove([fileName]);
+
+    if (error) {
+      console.error("Failed to delete image from storage:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("deleteFlowImageAction error:", err);
+    return false;
+  }
+}
+
+export async function listFlowImagesAction() {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.storage
+      .from("flow-images")
+      .list("", { limit: 100, sortBy: { column: "created_at", order: "desc" } });
+
+    if (error || !data) return [];
+
+    return data.map((item) => {
+      const { data: urlData } = supabase.storage
+        .from("flow-images")
+        .getPublicUrl(item.name);
+      return {
+        name: item.name,
+        size: item.metadata?.size ?? 0,
+        createdAt: item.created_at,
+        url: urlData.publicUrl,
+      };
+    });
+  } catch (err) {
+    console.error("listFlowImagesAction error:", err);
+    return [];
+  }
+}

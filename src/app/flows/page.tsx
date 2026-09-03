@@ -65,12 +65,12 @@ SUPABASE_SERVICE_ROLE_KEY=คีย์_service_role_จาก_supabase_dashboard
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-                      {flow.category ?? "General"}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-neutral-400">
+                    <span className="flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
                       <FileText className="h-3.5 w-3.5" />
                       {flow.step_count ?? 0} ขั้นตอน
+                    </span>
+                    <span className="text-xs text-neutral-400">
+                      อัปเดต: {new Date(flow.updated_at).toLocaleDateString("th-TH")}
                     </span>
                   </div>
 
@@ -85,22 +85,16 @@ SUPABASE_SERVICE_ROLE_KEY=คีย์_service_role_จาก_supabase_dashboard
                   )}
                 </div>
 
-                <div className="mt-6 flex items-center justify-between border-t border-neutral-100 pt-4 dark:border-neutral-800">
-                  <span className="text-xs text-neutral-400">
-                    อัปเดต: {new Date(flow.updated_at).toLocaleDateString("th-TH")}
-                  </span>
+                <div className="mt-6 flex items-center justify-end gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                  <DeleteFlowButton flowId={flow.id} title={flow.title} />
 
-                  <div className="flex items-center gap-3">
-                    <DeleteFlowButton flowId={flow.id} title={flow.title} />
-
-                    <Link
-                      href={`/flows/${flow.id}`}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-1.5 text-xs font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900 hover:bg-blue-600 dark:hover:bg-blue-500 dark:hover:text-white transition-colors"
-                    >
-                      <span>ดูรายละเอียด Flow</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
+                  <Link
+                    href={`/flows/${flow.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-1.5 text-xs font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900 hover:bg-blue-600 dark:hover:bg-blue-500 dark:hover:text-white transition-colors"
+                  >
+                    <span>ดูรายละเอียด Flow</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
                 </div>
               </div>
             ))}
@@ -118,19 +112,9 @@ function CreateFlowModal() {
         type="text"
         name="title"
         required
-        placeholder="ชื่อ Flow (เช่น UI/UX Layout หน้าสมาชิก)..."
-        className="rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 min-w-[280px]"
+        placeholder="ชื่อ Flow (เช่น การลงทะเบียน Carewell Teams)..."
+        className="rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 min-w-[320px]"
       />
-      <select
-        name="category"
-        defaultValue="UI/UX Layout"
-        className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 font-medium text-blue-600 dark:text-blue-400"
-      >
-        <option value="UI/UX Layout">UI/UX Layout</option>
-        <option value="System Flow">System Flow</option>
-        <option value="Database">Database Schema</option>
-        <option value="API">API/Backend</option>
-      </select>
       <button
         type="submit"
         className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 shadow-sm transition-colors"

@@ -26,10 +26,12 @@ import {
   Save,
   Columns,
   Trash2,
+  HardDrive,
 } from "lucide-react";
 import { MarkdownViewer } from "./MarkdownViewer";
+import { ImageStorageModal } from "./ImageStorageModal";
 import type { FlowStep } from "@/lib/flows";
-import { uploadFlowImageAction } from "@/app/flows/actions";
+import { uploadFlowImageAction, deleteFlowImageAction } from "@/app/flows/actions";
 
 export function FlowEditor({
   step,
@@ -45,6 +47,7 @@ export function FlowEditor({
   const [content, setContent] = useState(step.content ?? "");
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "error">("saved");
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+  const [isStorageModalOpen, setIsStorageModalOpen] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -95,7 +98,12 @@ export function FlowEditor({
       .filter((img) => img.src);
   }, [content]);
 
-  const handleRemoveImage = (fullMarkdown: string, refKey?: string | null) => {
+  const handleRemoveImage = (fullMarkdown: string, refKey?: string | null, src?: string) => {
+    if (src && src.includes("/storage/v1/object/public/flow-images/")) {
+      deleteFlowImageAction(src).catch((err) =>
+        console.error("Storage deletion warning:", err)
+      );
+    }
     setContent((prev) => {
       let updated = prev.replace(fullMarkdown, "");
       if (refKey) {
@@ -275,6 +283,15 @@ export function FlowEditor({
         <ImageIcon className="h-3.5 w-3.5" />
         <span>แทรกรูปภาพ</span>
       </button>
+      <button
+        type="button"
+        onClick={() => setIsStorageModalOpen(true)}
+        className="flex items-center gap-1 rounded-lg bg-neutral-100 px-2.5 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 transition-colors"
+        title="ดูและลบไฟล์รูปภาพทั้งหมดใน Supabase Storage"
+      >
+        <HardDrive className="h-3.5 w-3.5 text-blue-500" />
+        <span>จัดการ Storage</span>
+      </button>
 
       <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
 
@@ -360,8 +377,8 @@ export function FlowEditor({
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleRemoveImage(img.fullMarkdown, img.refKey)}
-                    title="ลบรูปภาพนี้ออกจากเนื้อหา"
+                    onClick={() => handleRemoveImage(img.fullMarkdown, img.refKey, img.src)}
+                    title="ลบรูปภาพนี้ออกจากเนื้อหาและ Storage"
                     className="rounded-md p-1 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/50 transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -502,7 +519,7 @@ export function FlowEditor({
             <div className="mb-2 text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Eye className="h-3.5 w-3.5" />
-                <span>ตัวอย่างเอกสารจริง (Notion-like Live Document Preview)</span>
+                <span>Preview</span>
               </span>
               <span className="text-[10px] text-neutral-400 font-normal">แสดงผลรูปภาพและจัดรูปแบบจริงทันที</span>
             </div>
@@ -521,6 +538,12 @@ export function FlowEditor({
           {renderImageGallery()}
         </div>
       )}
+
+      {/* Image Storage Management Modal */}
+      <ImageStorageModal
+        isOpen={isStorageModalOpen}
+        onClose={() => setIsStorageModalOpen(false)}
+      />
     </div>
   );
 }

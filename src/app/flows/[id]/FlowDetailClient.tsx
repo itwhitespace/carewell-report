@@ -234,32 +234,15 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-neutral-500 mb-1">คำอธิบาย</label>
-                <input
-                  type="text"
-                  value={flowDesc}
-                  onChange={(e) => setFlowDesc(e.target.value)}
-                  placeholder="คำอธิบายสั้นๆ..."
-                  className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-neutral-500 mb-1">หมวดหมู่</label>
-                <select
-                  value={flowCat}
-                  onChange={(e) => setFlowCat(e.target.value)}
-                  className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-                >
-                  <option value="General">General</option>
-                  <option value="Import">Import/Export</option>
-                  <option value="Database">Database</option>
-                  <option value="API">API/Backend</option>
-                  <option value="UI/UX">UI/UX Layout</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-neutral-500 mb-1">คำอธิบาย</label>
+              <input
+                type="text"
+                value={flowDesc}
+                onChange={(e) => setFlowDesc(e.target.value)}
+                placeholder="คำอธิบายสั้นๆ..."
+                className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+              />
             </div>
 
             <div className="flex items-center gap-2 justify-end pt-2">
@@ -283,10 +266,7 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-                  {flow.category ?? "General"}
-                </span>
-                <span className="text-xs text-neutral-400">
+                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
                   {steps.length} ขั้นตอน
                 </span>
               </div>
