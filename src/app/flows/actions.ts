@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import {
   createFlowStep,
   createSystemFlow,
@@ -81,4 +82,52 @@ export async function deleteStepAction(stepId: string, flowId: string) {
 export async function reorderStepsAction(flowId: string, stepIds: string[]) {
   await reorderFlowSteps(flowId, stepIds);
   revalidatePath(`/flows/${flowId}`);
+}
+
+export async function uploadFlowImageAction(formData: FormData): Promise<string> {
+  const file = formData.get("file") as File;
+  if (!file) {
+    throw new Error("ไม่พบไฟล์รูปภาพ");
+  }
+
+  const supabase = getSupabaseAdmin();
+  const fileExt = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
+  const fileName = `img_${Date.now()}_${cleanName}.${fileExt}`;
+
+  // Try uploading to 'flow-images' storage bucket
+  const { data, error } = await supabase.storage
+    .from("flow-images")
+    .upload(fileName, file, {
+      cacheControl: "3600",
+      upsert: true,
+    });
+
+  if (error) {
+    console.warn("Storage upload notice (creating bucket):", error.message);
+    try {
+      await supabase.storage.createBucket("flow-images", { public: true });
+    } catch (bErr) {
+      console.warn("Bucket creation notice:", bErr);
+    }
+    
+    // Retry upload after creating bucket
+    const { error: retryErr } = await supabase.storage
+      .from("flow-images")
+      .upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+    if (retryErr) {
+      console.error("Failed to upload image to Supabase storage:", retryErr);
+      throw retryErr;
+    }
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from("flow-images")
+    .getPublicUrl(fileName);
+
+  return publicUrlData.publicUrl;
 }

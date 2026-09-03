@@ -12,8 +12,20 @@ export function MarkdownViewer({ content }: { content: string }) {
     );
   }
 
-  // Parse lines into structured blocks
-  const lines = content.split("\n");
+  // Extract reference link definitions e.g. [img_123]: data:image/jpeg;base64,...
+  const refMap = new Map<string, string>();
+  const rawLines = content.split("\n");
+  const lines: string[] = [];
+
+  for (const l of rawLines) {
+    const refMatch = l.trim().match(/^\[([a-zA-Z0-9_-]+)\]:\s*(.+)$/);
+    if (refMatch) {
+      refMap.set(refMatch[1].toLowerCase(), refMatch[2].trim());
+    } else {
+      lines.push(l);
+    }
+  }
+
   const renderedElements: React.ReactNode[] = [];
   let currentCodeBlock: { lang: string; lines: string[] } | null = null;
   let currentCalloutBlock: { type: string; lines: string[] } | null = null;
@@ -152,23 +164,29 @@ export function MarkdownViewer({ content }: { content: string }) {
       }
     }
 
-    // Check Standalone Image Line `![alt](url)`
-    const imageMatch = line.trim().match(/^!\[(.*?)\]\((.*?)\)$/);
+    // Check Standalone Image Line `![alt](url)` or `![alt][ref]`
+    const imageMatch = line.trim().match(/^!\[(.*?)\](?:\((.*?)\)|\[(.*?)\])$/);
     if (imageMatch) {
       flushList();
       const altText = imageMatch[1] || "รูปประกอบ UI/UX Layout";
-      const imageUrl = imageMatch[2];
-      renderedElements.push(
-        <div key={`img-${i}`} className="my-6 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 shadow-md">
-          <img src={imageUrl} alt={altText} className="max-h-[550px] w-full object-contain mx-auto" />
-          {altText && (
-            <p className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-4 py-2 text-center text-xs font-medium text-neutral-500 dark:text-neutral-400">
-              🖼️ {altText}
-            </p>
-          )}
-        </div>
-      );
-      continue;
+      let imageUrl = imageMatch[2] || "";
+      const refKey = imageMatch[3];
+      if (!imageUrl && refKey && refMap.has(refKey.toLowerCase())) {
+        imageUrl = refMap.get(refKey.toLowerCase())!;
+      }
+      if (imageUrl) {
+        renderedElements.push(
+          <div key={`img-${i}`} className="my-6 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 shadow-md">
+            <img src={imageUrl} alt={altText} className="max-h-[550px] w-full object-contain mx-auto" />
+            {altText && (
+              <p className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-4 py-2 text-center text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                🖼️ {altText}
+              </p>
+            )}
+          </div>
+        );
+        continue;
+      }
     }
 
     // Check Checkboxes `- [ ]` or `- [x]`

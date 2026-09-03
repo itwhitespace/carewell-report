@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { MarkdownViewer } from "./MarkdownViewer";
 import type { FlowStep } from "@/lib/flows";
+import { uploadFlowImageAction } from "@/app/flows/actions";
 
 export function FlowEditor({
   step,
@@ -63,19 +64,46 @@ export function FlowEditor({
     onDraftChange?.(isDirty, title, content);
   }, [isDirty, title, content, onDraftChange]);
 
-  // Extract inserted markdown images for Inline Image Preview Gallery
+  // Extract inserted markdown images (both direct URLs and reference URLs)
   const extractedImages = useMemo(() => {
-    const matches = Array.from(content.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g));
-    return matches.map((match, idx) => ({
-      id: idx,
-      alt: match[1] || "รูปภาพประกอบ",
-      src: match[2],
-      fullMarkdown: match[0],
-    }));
+    const refMap = new Map<string, string>();
+    const rawLines = content.split("\n");
+    for (const l of rawLines) {
+      const refMatch = l.trim().match(/^\[([a-zA-Z0-9_-]+)\]:\s*(.+)$/);
+      if (refMatch) {
+        refMap.set(refMatch[1].toLowerCase(), refMatch[2].trim());
+      }
+    }
+
+    const matches = Array.from(content.matchAll(/!\[([^\]]*)\](?:\(([^)]+)\)|\[([^\]]+)\])/g));
+    return matches
+      .map((match, idx) => {
+        const alt = match[1] || "รูปภาพประกอบ";
+        let src = match[2] || "";
+        const refKey = match[3];
+        if (!src && refKey && refMap.has(refKey.toLowerCase())) {
+          src = refMap.get(refKey.toLowerCase())!;
+        }
+        return {
+          id: idx,
+          alt,
+          src,
+          fullMarkdown: match[0],
+          refKey: refKey ? refKey : null,
+        };
+      })
+      .filter((img) => img.src);
   }, [content]);
 
-  const handleRemoveImage = (fullMarkdown: string) => {
-    setContent((prev) => prev.replace(fullMarkdown, "").trim());
+  const handleRemoveImage = (fullMarkdown: string, refKey?: string | null) => {
+    setContent((prev) => {
+      let updated = prev.replace(fullMarkdown, "");
+      if (refKey) {
+        const lines = updated.split("\n").filter((l) => !l.trim().toLowerCase().startsWith(`[${refKey.toLowerCase()}]:`));
+        updated = lines.join("\n");
+      }
+      return updated.trim();
+    });
   };
 
   // Manual save handler
@@ -152,16 +180,37 @@ export function FlowEditor({
     insertSnippet(code);
   }
 
-  // Handle Image File Conversion & Automatic Compression
+  // Handle Image Upload: Try Supabase Storage first for clean 1-line URL, or fallback to clean Reference-style
   async function handleImageFile(file: File) {
     if (!file.type.startsWith("image/")) return;
+    const imageName = file.name ? file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, "_") : "ภาพประกอบ_UI";
+
     try {
-      const dataUrl = await compressImage(file, 1400, 0.82);
-      const imageName = file.name ? file.name.replace(/\.[^/.]+$/, "") : "ภาพประกอบ UI/UX";
-      const markdownImage = `\n![${imageName}](${dataUrl})\n\n`;
+      setSaveStatus("saving");
+      // 1. Try uploading to Supabase Storage -> returns clean short 1-line URL!
+      const formData = new FormData();
+      formData.append("file", file);
+      const publicUrl = await uploadFlowImageAction(formData);
+
+      const markdownImage = `\n![${imageName}](${publicUrl})\n\n`;
       insertSnippet(markdownImage);
+      setSaveStatus("unsaved");
     } catch (err) {
-      console.error("Image processing error:", err);
+      console.warn("Storage upload notice (falling back to reference style):", err);
+      try {
+        // 2. Fallback: Compress and insert reference style markdown: ![imageName][img-1]
+        const dataUrl = await compressImage(file, 1400, 0.82);
+        const refId = `img_${Date.now()}`;
+        const refTag = `![${imageName}][${refId}]`;
+        const refDefinition = `\n\n[${refId}]: ${dataUrl}`;
+
+        insertSnippet(`\n${refTag}\n`);
+        setContent((prev) => prev + refDefinition);
+        setSaveStatus("unsaved");
+      } catch (cErr) {
+        console.error("Image processing error:", cErr);
+        setSaveStatus("error");
+      }
     }
   }
 
@@ -311,7 +360,7 @@ export function FlowEditor({
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleRemoveImage(img.fullMarkdown)}
+                    onClick={() => handleRemoveImage(img.fullMarkdown, img.refKey)}
                     title="ลบรูปภาพนี้ออกจากเนื้อหา"
                     className="rounded-md p-1 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/50 transition-colors"
                   >
