@@ -206,6 +206,12 @@ function parseMarkdownToElements(content: string, refMap: Map<string, string>): 
       }
     }
 
+function isGenericAlt(alt: string): boolean {
+  if (!alt || !alt.trim()) return true;
+  const clean = alt.trim().toLowerCase();
+  return /^(image|img|รูปภาพ|รูปภาพประกอบ|รูปประกอบ|ภาพประกอบ|ภาพประกอบ_ui|ภาพประกอบ ui\/ux|img_\d+.*|image_\d+.*|undefined|null)$/i.test(clean);
+}
+
     // Check raw HTML <img src="..." width="..." alt="..." />
     const htmlImgMatch = line.trim().match(/^<img\s+([^>]+)\/?>$/i);
     if (htmlImgMatch) {
@@ -226,9 +232,9 @@ function parseMarkdownToElements(content: string, refMap: Map<string, string>): 
               style={width ? { width: width.endsWith("%") || width.endsWith("px") ? width : `${width}px`, maxWidth: "100%" } : undefined}
               className="max-h-[600px] object-contain rounded-xl shadow-sm"
             />
-            {altText && (
+            {altText && !isGenericAlt(altText) && (
               <p className="mt-3 text-center text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                🖼️ {altText}
+                {altText}
               </p>
             )}
           </div>
@@ -280,9 +286,9 @@ function parseMarkdownToElements(content: string, refMap: Map<string, string>): 
               style={customWidth ? { maxWidth: customWidth, width: "100%" } : undefined}
               className={`max-h-[600px] object-contain rounded-xl shadow-sm transition-all ${sizeClass}`}
             />
-            {altText && (
+            {altText && !isGenericAlt(altText) && (
               <p className="mt-3 text-center text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                🖼️ {altText}
+                {altText}
               </p>
             )}
           </div>
