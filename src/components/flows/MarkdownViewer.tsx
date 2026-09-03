@@ -15,21 +15,29 @@ export function MarkdownViewer({ content }: { content: string }) {
   // Extract reference link definitions e.g. [img_123]: data:image/jpeg;base64,...
   const refMap = new Map<string, string>();
   const rawLines = content.split("\n");
-  const lines: string[] = [];
+  const cleanLines: string[] = [];
 
   for (const l of rawLines) {
     const refMatch = l.trim().match(/^\[([a-zA-Z0-9_-]+)\]:\s*(.+)$/);
     if (refMatch) {
       refMap.set(refMatch[1].toLowerCase(), refMatch[2].trim());
     } else {
-      lines.push(l);
+      cleanLines.push(l);
     }
   }
 
+  const renderedElements = parseMarkdownToElements(cleanLines.join("\n"), refMap);
+
+  return <div className="prose dark:prose-invert max-w-none">{renderedElements}</div>;
+}
+
+function parseMarkdownToElements(content: string, refMap: Map<string, string>): React.ReactNode[] {
+  const lines = content.split("\n");
   const renderedElements: React.ReactNode[] = [];
   let currentCodeBlock: { lang: string; lines: string[] } | null = null;
   let currentCalloutBlock: { type: string; lines: string[] } | null = null;
   let currentListBlock: { type: "bullet" | "number" | "check"; items: { text: string; checked?: boolean }[] } | null = null;
+  let currentColumnBlock: { lines: string[] } | null = null;
 
   function flushList() {
     if (!currentListBlock) return;
@@ -125,6 +133,40 @@ export function MarkdownViewer({ content }: { content: string }) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
+    // Check :::columns block start / end
+    if (line.trim().startsWith(":::columns")) {
+      flushList();
+      flushCallout();
+      flushCode();
+      currentColumnBlock = { lines: [] };
+      continue;
+    }
+
+    if (currentColumnBlock) {
+      if (line.trim() === ":::") {
+        // Flush 2-column block
+        const colContent = currentColumnBlock.lines.join("\n");
+        const colParts = colContent.split(/^---$/m);
+        const col1Lines = colParts[0] || "";
+        const col2Lines = colParts[1] || "";
+
+        renderedElements.push(
+          <div key={`col-${i}`} className="my-6 grid grid-cols-1 gap-6 md:grid-cols-2 rounded-2xl border border-neutral-200/80 bg-neutral-50/30 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/30">
+            <div className="space-y-3">
+              {parseMarkdownToElements(col1Lines, refMap)}
+            </div>
+            <div className="space-y-3 border-t border-neutral-200/60 pt-4 md:border-t-0 md:border-l md:pl-6 md:pt-0 dark:border-neutral-800/60">
+              {parseMarkdownToElements(col2Lines, refMap)}
+            </div>
+          </div>
+        );
+        currentColumnBlock = null;
+      } else {
+        currentColumnBlock.lines.push(line);
+      }
+      continue;
+    }
+
     // Check Code Block Start / End
     if (line.trim().startsWith("```")) {
       if (currentCodeBlock) {
@@ -164,22 +206,82 @@ export function MarkdownViewer({ content }: { content: string }) {
       }
     }
 
-    // Check Standalone Image Line `![alt](url)` or `![alt][ref]`
+    // Check raw HTML <img src="..." width="..." alt="..." />
+    const htmlImgMatch = line.trim().match(/^<img\s+([^>]+)\/?>$/i);
+    if (htmlImgMatch) {
+      flushList();
+      const attrStr = htmlImgMatch[1];
+      const srcMatch = attrStr.match(/src=["']([^"']+)["']/i);
+      const widthMatch = attrStr.match(/width=["']([^"']+)["']/i);
+      const altMatch = attrStr.match(/alt=["']([^"']+)["']/i);
+      if (srcMatch) {
+        const imageUrl = srcMatch[1];
+        const width = widthMatch ? widthMatch[1] : undefined;
+        const altText = altMatch ? altMatch[1] : "";
+        renderedElements.push(
+          <div key={`img-html-${i}`} className="my-6 flex flex-col items-center justify-center rounded-2xl border border-neutral-200/80 bg-neutral-50/50 p-4 dark:border-neutral-800 dark:bg-neutral-900/40 shadow-sm">
+            <img
+              src={imageUrl}
+              alt={altText}
+              style={width ? { width: width.endsWith("%") || width.endsWith("px") ? width : `${width}px`, maxWidth: "100%" } : undefined}
+              className="max-h-[600px] object-contain rounded-xl shadow-sm"
+            />
+            {altText && (
+              <p className="mt-3 text-center text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                🖼️ {altText}
+              </p>
+            )}
+          </div>
+        );
+        continue;
+      }
+    }
+
+    // Check Standalone Image Line `![alt](url)` or `![alt|size](url)` or `![alt][ref]`
     const imageMatch = line.trim().match(/^!\[(.*?)\](?:\((.*?)\)|\[(.*?)\])$/);
     if (imageMatch) {
       flushList();
-      const altText = imageMatch[1] || "รูปประกอบ UI/UX Layout";
+      let rawAlt = imageMatch[1] || "";
       let imageUrl = imageMatch[2] || "";
       const refKey = imageMatch[3];
+
       if (!imageUrl && refKey && refMap.has(refKey.toLowerCase())) {
         imageUrl = refMap.get(refKey.toLowerCase())!;
       }
+
       if (imageUrl) {
+        let altText = rawAlt;
+        let sizeClass = "max-w-full h-auto"; // Natural size by default!
+        let customWidth = "";
+
+        if (rawAlt.includes("|")) {
+          const parts = rawAlt.split("|");
+          altText = parts[0].trim();
+          const modifier = parts[1].trim().toLowerCase();
+
+          if (modifier === "small" || modifier === "sm" || modifier === "เล็ก") {
+            sizeClass = "max-w-[320px] w-full h-auto";
+          } else if (modifier === "medium" || modifier === "md" || modifier === "กลาง") {
+            sizeClass = "max-w-[640px] w-full h-auto";
+          } else if (modifier === "large" || modifier === "lg" || modifier === "ใหญ่") {
+            sizeClass = "max-w-[960px] w-full h-auto";
+          } else if (modifier === "full" || modifier === "เต็ม") {
+            sizeClass = "w-full h-auto";
+          } else if (modifier.endsWith("px") || modifier.endsWith("%")) {
+            customWidth = modifier;
+          }
+        }
+
         renderedElements.push(
-          <div key={`img-${i}`} className="my-6 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 shadow-md">
-            <img src={imageUrl} alt={altText} className="max-h-[550px] w-full object-contain mx-auto" />
+          <div key={`img-${i}`} className="my-6 flex flex-col items-center justify-center rounded-2xl border border-neutral-200/80 bg-neutral-50/50 p-4 dark:border-neutral-800 dark:bg-neutral-900/40 shadow-sm">
+            <img
+              src={imageUrl}
+              alt={altText}
+              style={customWidth ? { maxWidth: customWidth, width: "100%" } : undefined}
+              className={`max-h-[600px] object-contain rounded-xl shadow-sm transition-all ${sizeClass}`}
+            />
             {altText && (
-              <p className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-4 py-2 text-center text-xs font-medium text-neutral-500 dark:text-neutral-400">
+              <p className="mt-3 text-center text-xs font-medium text-neutral-500 dark:text-neutral-400">
                 🖼️ {altText}
               </p>
             )}
@@ -264,7 +366,7 @@ export function MarkdownViewer({ content }: { content: string }) {
   flushCallout();
   flushCode();
 
-  return <div className="prose dark:prose-invert max-w-none">{renderedElements}</div>;
+  return renderedElements;
 }
 
 function CodeBlockViewer({ code, lang }: { code: string; lang: string }) {
@@ -307,14 +409,6 @@ function CodeBlockViewer({ code, lang }: { code: string; lang: string }) {
 function renderInlineMarkdown(text: string): React.ReactNode {
   const parts: React.ReactNode[] = [];
   let keyIndex = 0;
-
-  // Regex to match inline elements:
-  // 1. Image: `![alt](url)`
-  // 2. Highlights: `==text==` or `<mark class="color">text</mark>` or `<mark>text</mark>`
-  // 3. Colored text: `<span class="color">text</span>`
-  // 4. Bold: `**text**`
-  // 5. Italic: `*text*`
-  // 6. Code: `` `text` ``
 
   const regex = /(!\[.*?\]\(.*?\)|==.*?==|<mark(?:\s+class=".*?")?>.*?<\/mark>|<span\s+class=".*?">.*?<\/span>|\*\*.*?\*\*|\*.*?\*|`.*?`)/g;
   const rawParts = text.split(regex);

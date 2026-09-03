@@ -188,6 +188,11 @@ export function FlowEditor({
     insertSnippet(code);
   }
 
+  function insertColumnsBlock() {
+    const template = `:::columns\n### รายละเอียดข้อความ (ฝั่งซ้าย)\nเขียนอธิบายขั้นตอนการทำงานหรือรายละเอียดระบบที่นี่...\n\n---\n### รูปภาพประกอบ (ฝั่งขวา)\n![คำอธิบายภาพ|medium](แทรกลิงก์รูปภาพที่นี่)\n:::\n\n`;
+    insertSnippet(template);
+  }
+
   // Handle Image Upload: Try Supabase Storage first for clean 1-line URL, or fallback to clean Reference-style
   async function handleImageFile(file: File) {
     if (!file.type.startsWith("image/")) return;
@@ -271,6 +276,18 @@ export function FlowEditor({
 
       <ToolbarButton onClick={() => insertSnippet('<span class="red">', "</span>")} title="ตัวหนังสือสีแดง" icon={Palette} label="ตัวอักษรแดง" />
       <ToolbarButton onClick={() => insertSnippet('<span class="blue">', "</span>")} title="ตัวหนังสือสีฟ้า" icon={Palette} label="ตัวอักษรฟ้า" />
+
+      <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
+
+      <button
+        type="button"
+        onClick={insertColumnsBlock}
+        className="flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 transition-colors"
+        title="แทรกเลเอาต์ 2 คอลัมน์ (ข้อความอยู่ซ้าย รูปภาพอยู่ขวา)"
+      >
+        <Columns className="h-3.5 w-3.5 text-emerald-600" />
+        <span>แทรก 2 คอลัมน์</span>
+      </button>
 
       <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-800 mx-1" />
 
