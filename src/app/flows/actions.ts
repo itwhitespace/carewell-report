@@ -84,23 +84,26 @@ export async function reorderStepsAction(flowId: string, stepIds: string[]) {
   revalidatePath(`/flows/${flowId}`);
 }
 
-export async function uploadFlowImageAction(formData: FormData): Promise<string> {
+export async function uploadFlowMediaAction(formData: FormData): Promise<{ url: string; type: "image" | "video" }> {
   const file = formData.get("file") as File;
   if (!file) {
-    throw new Error("ไม่พบไฟล์รูปภาพ");
+    throw new Error("ไม่พบไฟล์รูปภาพหรือวีดีโอ");
   }
 
   const supabase = getSupabaseAdmin();
   const fileExt = (file.name.split(".").pop() || "jpg").toLowerCase();
   const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
-  const fileName = `img_${Date.now()}_${cleanName}.${fileExt}`;
+  const isVideo = file.type.startsWith("video/") || ["mp4", "webm", "ogg", "mov", "m4v", "avi", "mkv"].includes(fileExt);
+  const prefix = isVideo ? "vid" : "img";
+  const fileName = `${prefix}_${Date.now()}_${cleanName}.${fileExt}`;
 
   // Try uploading to 'flow-images' storage bucket
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from("flow-images")
     .upload(fileName, file, {
       cacheControl: "3600",
       upsert: true,
+      contentType: file.type || undefined,
     });
 
   if (error) {
@@ -117,10 +120,11 @@ export async function uploadFlowImageAction(formData: FormData): Promise<string>
       .upload(fileName, file, {
         cacheControl: "3600",
         upsert: true,
+        contentType: file.type || undefined,
       });
 
     if (retryErr) {
-      console.error("Failed to upload image to Supabase storage:", retryErr);
+      console.error("Failed to upload file to Supabase storage:", retryErr);
       throw retryErr;
     }
   }
@@ -129,7 +133,15 @@ export async function uploadFlowImageAction(formData: FormData): Promise<string>
     .from("flow-images")
     .getPublicUrl(fileName);
 
-  return publicUrlData.publicUrl;
+  return {
+    url: publicUrlData.publicUrl,
+    type: isVideo ? "video" : "image",
+  };
+}
+
+export async function uploadFlowImageAction(formData: FormData): Promise<string> {
+  const res = await uploadFlowMediaAction(formData);
+  return res.url;
 }
 
 export async function deleteFlowImageAction(imageUrl: string): Promise<boolean> {
@@ -144,7 +156,7 @@ export async function deleteFlowImageAction(imageUrl: string): Promise<boolean> 
       .remove([fileName]);
 
     if (error) {
-      console.error("Failed to delete image from storage:", error);
+      console.error("Failed to delete media from storage:", error);
       return false;
     }
     return true;
@@ -167,11 +179,14 @@ export async function listFlowImagesAction() {
       const { data: urlData } = supabase.storage
         .from("flow-images")
         .getPublicUrl(item.name);
+      const ext = item.name.split(".").pop()?.toLowerCase() || "";
+      const isVideo = item.name.startsWith("vid_") || ["mp4", "webm", "ogg", "mov", "m4v", "avi", "mkv"].includes(ext);
       return {
         name: item.name,
         size: item.metadata?.size ?? 0,
         createdAt: item.created_at,
         url: urlData.publicUrl,
+        type: (isVideo ? "video" : "image") as "image" | "video",
       };
     });
   } catch (err) {
@@ -179,3 +194,4 @@ export async function listFlowImagesAction() {
     return [];
   }
 }
+

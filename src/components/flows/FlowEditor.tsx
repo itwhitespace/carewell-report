@@ -20,6 +20,7 @@ import {
   Loader2,
   Minus,
   Image as ImageIcon,
+  Video,
   Highlighter,
   Palette,
   Upload,
@@ -31,7 +32,7 @@ import {
 import { MarkdownViewer } from "./MarkdownViewer";
 import { ImageStorageModal } from "./ImageStorageModal";
 import type { FlowStep } from "@/lib/flows";
-import { uploadFlowImageAction, deleteFlowImageAction } from "@/app/flows/actions";
+import { uploadFlowImageAction, uploadFlowMediaAction, deleteFlowImageAction } from "@/app/flows/actions";
 
 export function FlowEditor({
   step,
@@ -51,6 +52,7 @@ export function FlowEditor({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Sync state when step prop changes
   useEffect(() => {
@@ -67,8 +69,8 @@ export function FlowEditor({
     onDraftChange?.(isDirty, title, content);
   }, [isDirty, title, content, onDraftChange]);
 
-  // Extract inserted markdown images (both direct URLs and reference URLs)
-  const extractedImages = useMemo(() => {
+  // Extract inserted markdown images and videos (both direct URLs, HTML video tags, and reference URLs)
+  const extractedMedia = useMemo(() => {
     const refMap = new Map<string, string>();
     const rawLines = content.split("\n");
     for (const l of rawLines) {
@@ -78,34 +80,65 @@ export function FlowEditor({
       }
     }
 
-    const matches = Array.from(content.matchAll(/!\[([^\]]*)\](?:\(([^)]+)\)|\[([^\]]+)\])/g));
-    return matches
-      .map((match, idx) => {
-        const alt = match[1] || "รูปภาพประกอบ";
-        let src = match[2] || "";
-        const refKey = match[3];
-        if (!src && refKey && refMap.has(refKey.toLowerCase())) {
-          src = refMap.get(refKey.toLowerCase())!;
-        }
-        return {
-          id: idx,
+    const items: Array<{
+      id: string;
+      type: "image" | "video";
+      alt: string;
+      src: string;
+      fullMarkup: string;
+      refKey?: string | null;
+    }> = [];
+
+    // 1. Markdown images or videos ![alt](url) or ![alt][ref]
+    const imageMatches = Array.from(content.matchAll(/!\[([^\]]*)\](?:\(([^)]+)\)|\[([^\]]+)\])/g));
+    imageMatches.forEach((match, idx) => {
+      const alt = match[1] || "สื่อประกอบ";
+      let src = match[2] || "";
+      const refKey = match[3];
+      if (!src && refKey && refMap.has(refKey.toLowerCase())) {
+        src = refMap.get(refKey.toLowerCase())!;
+      }
+      if (src) {
+        const ext = src.split(".").pop()?.split("?")[0].toLowerCase() || "";
+        const isVideo = ["mp4", "webm", "ogg", "mov", "m4v"].includes(ext) || alt.toLowerCase().includes("video") || alt.includes("วีดีโอ");
+        items.push({
+          id: `img-${idx}`,
+          type: isVideo ? "video" : "image",
           alt,
           src,
-          fullMarkdown: match[0],
-          refKey: refKey ? refKey : null,
-        };
-      })
-      .filter((img) => img.src);
+          fullMarkup: match[0],
+          refKey: refKey || null,
+        });
+      }
+    });
+
+    // 2. HTML <video src="..."> tags
+    const videoMatches = Array.from(content.matchAll(/<video\s+[^>]*src=["']([^"']+)["'][^>]*>(?:<\/video>)?/gi));
+    videoMatches.forEach((match, idx) => {
+      const src = match[1];
+      if (src) {
+        items.push({
+          id: `vid-${idx}`,
+          type: "video",
+          alt: "วีดีโอประกอบ",
+          src,
+          fullMarkup: match[0],
+          refKey: null,
+        });
+      }
+    });
+
+    return items;
   }, [content]);
 
-  const handleRemoveImage = (fullMarkdown: string, refKey?: string | null, src?: string) => {
+  const handleRemoveMedia = (fullMarkup: string, refKey?: string | null, src?: string) => {
     if (src && src.includes("/storage/v1/object/public/flow-images/")) {
       deleteFlowImageAction(src).catch((err) =>
         console.error("Storage deletion warning:", err)
       );
     }
     setContent((prev) => {
-      let updated = prev.replace(fullMarkdown, "");
+      let updated = prev.replace(fullMarkup, "");
       if (refKey) {
         const lines = updated.split("\n").filter((l) => !l.trim().toLowerCase().startsWith(`[${refKey.toLowerCase()}]:`));
         updated = lines.join("\n");
@@ -153,14 +186,14 @@ export function FlowEditor({
     const start = el.selectionStart;
     const end = el.selectionEnd;
     const selected = content.substring(start, end);
-    const replacement = `${prefix}${selected || "ข้อความ"}${suffix}`;
+    const replacement = `${prefix}${selected || (suffix ? "ข้อความ" : "")}${suffix}`;
 
     const newContent = content.substring(0, start) + replacement + content.substring(end);
     setContent(newContent);
 
     setTimeout(() => {
       el.focus();
-      el.setSelectionRange(start + prefix.length, start + prefix.length + (selected.length || 6));
+      el.setSelectionRange(start + prefix.length, start + prefix.length + (selected.length || (suffix ? 6 : 0)));
     }, 50);
   }
 
@@ -189,18 +222,17 @@ export function FlowEditor({
   }
 
   function insertColumnsBlock() {
-    const template = `:::columns\n### รายละเอียดข้อความ (ฝั่งซ้าย)\nเขียนอธิบายขั้นตอนการทำงานหรือรายละเอียดระบบที่นี่...\n\n---\n### รูปภาพประกอบ (ฝั่งขวา)\n![คำอธิบายภาพ|medium](แทรกลิงก์รูปภาพที่นี่)\n:::\n\n`;
+    const template = `:::columns\n### รายละเอียดข้อความ (ฝั่งซ้าย)\nเขียนอธิบายขั้นตอนการทำงานหรือรายละเอียดระบบที่นี่...\n\n---\n### รูปภาพหรือวีดีโอประกอบ (ฝั่งขวา)\n![คำอธิบายภาพ|medium](แทรกลิงก์รูปภาพที่นี่)\n:::\n\n`;
     insertSnippet(template);
   }
 
-  // Handle Image Upload: Try Supabase Storage first for clean 1-line URL, or fallback to clean Reference-style
+  // Handle Image Upload
   async function handleImageFile(file: File) {
     if (!file.type.startsWith("image/")) return;
     const imageName = file.name ? file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, "_") : "ภาพประกอบ_UI";
 
     try {
       setSaveStatus("saving");
-      // 1. Try uploading to Supabase Storage -> returns clean short 1-line URL!
       const formData = new FormData();
       formData.append("file", file);
       const publicUrl = await uploadFlowImageAction(formData);
@@ -211,7 +243,6 @@ export function FlowEditor({
     } catch (err) {
       console.warn("Storage upload notice (falling back to reference style):", err);
       try {
-        // 2. Fallback: Compress and insert reference style markdown: ![imageName][img-1]
         const dataUrl = await compressImage(file, 1400, 0.82);
         const refId = `img_${Date.now()}`;
         const refTag = `![${imageName}][${refId}]`;
@@ -227,7 +258,28 @@ export function FlowEditor({
     }
   }
 
-  // Handle Paste Image (Ctrl+V)
+  // Handle Video Upload
+  async function handleVideoFile(file: File) {
+    if (!file.type.startsWith("video/")) return;
+    const videoName = file.name ? file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, "_") : "วีดีโอประกอบ";
+
+    try {
+      setSaveStatus("saving");
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await uploadFlowMediaAction(formData);
+
+      const videoMarkup = `\n<video src="${res.url}" controls class="w-full rounded-xl my-4"></video>\n\n`;
+      insertSnippet(videoMarkup);
+      setSaveStatus("unsaved");
+    } catch (err) {
+      console.error("Video upload error:", err);
+      alert("เกิดข้อผิดพลาดในการอัปโหลดวีดีโอ กรุณาลองใหม่อีกครั้ง");
+      setSaveStatus("error");
+    }
+  }
+
+  // Handle Paste Image/Video (Ctrl+V)
   function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
@@ -235,11 +287,15 @@ export function FlowEditor({
         e.preventDefault();
         const file = items[i].getAsFile();
         if (file) handleImageFile(file);
+      } else if (items[i].type.indexOf("video") !== -1) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (file) handleVideoFile(file);
       }
     }
   }
 
-  // Handle Drag & Drop Image
+  // Handle Drag & Drop Image/Video
   function handleDrop(e: React.DragEvent<HTMLTextAreaElement>) {
     e.preventDefault();
     const files = e.dataTransfer.files;
@@ -247,10 +303,22 @@ export function FlowEditor({
       for (let i = 0; i < files.length; i++) {
         if (files[i].type.startsWith("image/")) {
           handleImageFile(files[i]);
+        } else if (files[i].type.startsWith("video/")) {
+          handleVideoFile(files[i]);
         }
       }
     }
   }
+
+  const handleSelectMediaFromStorage = (url: string, type: "image" | "video") => {
+    if (type === "video") {
+      const snippet = `\n<video src="${url}" controls class="w-full rounded-xl my-4"></video>\n\n`;
+      insertSnippet(snippet);
+    } else {
+      const snippet = `\n![รูปภาพประกอบ](${url})\n\n`;
+      insertSnippet(snippet);
+    }
+  };
 
   // Render formatting toolbar
   const renderToolbar = () => (
@@ -283,7 +351,7 @@ export function FlowEditor({
         type="button"
         onClick={insertColumnsBlock}
         className="flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 transition-colors"
-        title="แทรกเลเอาต์ 2 คอลัมน์ (ข้อความอยู่ซ้าย รูปภาพอยู่ขวา)"
+        title="แทรกเลเอาต์ 2 คอลัมน์ (ข้อความอยู่ซ้าย รูปภาพ/วีดีโออยู่ขวา)"
       >
         <Columns className="h-3.5 w-3.5 text-emerald-600" />
         <span>แทรก 2 คอลัมน์</span>
@@ -300,11 +368,22 @@ export function FlowEditor({
         <ImageIcon className="h-3.5 w-3.5" />
         <span>แทรกรูปภาพ</span>
       </button>
+
+      <button
+        type="button"
+        onClick={() => videoInputRef.current?.click()}
+        className="flex items-center gap-1 rounded-lg bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-100 dark:bg-purple-950/60 dark:text-purple-300 transition-colors"
+        title="เลือกไฟล์วีดีโอจากเครื่อง หรือวางวีดีโอลงในช่องพิมพ์"
+      >
+        <Video className="h-3.5 w-3.5 text-purple-600" />
+        <span>แทรกวีดีโอ</span>
+      </button>
+
       <button
         type="button"
         onClick={() => setIsStorageModalOpen(true)}
         className="flex items-center gap-1 rounded-lg bg-neutral-100 px-2.5 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 transition-colors"
-        title="ดูและลบไฟล์รูปภาพทั้งหมดใน Supabase Storage"
+        title="ดูและลบไฟล์รูปภาพ/วีดีโอทั้งหมดใน Supabase Storage"
       >
         <HardDrive className="h-3.5 w-3.5 text-blue-500" />
         <span>จัดการ Storage</span>
@@ -335,12 +414,12 @@ export function FlowEditor({
         onChange={(e) => setContent(e.target.value)}
         onPaste={handlePaste}
         onDrop={handleDrop}
-        placeholder="พิมพ์เนื้อหาขั้นตอน UI/UX Layout ที่นี่... (สามารถกดวางรูปภาพ Ctrl+V หรือลากรูปภาพมาวางได้โดยตรง)"
+        placeholder="พิมพ์เนื้อหาขั้นตอน UI/UX Layout ที่นี่... (สามารถกดวางรูปภาพ/วีดีโอ Ctrl+V หรือลากไฟล์มาวางได้โดยตรง)"
         rows={viewMode === "split" ? 14 : 18}
         className="w-full rounded-xl border border-neutral-300 bg-white p-4 font-mono text-sm leading-relaxed text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
       />
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-500 dark:text-neutral-400 pt-2 border-t border-neutral-100 dark:border-neutral-800">
-        <span>🖼️ **คำแนะนำ**: กดปุ่ม &quot;แทรกรูปภาพ&quot; หรือกดวางรูปภาพ (**Ctrl + V**) / ลากไฟล์รูปมาวางในช่องพิมพ์ได้ทันที</span>
+        <span>🎬 **คำแนะนำ**: กดปุ่ม &quot;แทรกรูปภาพ&quot; / &quot;แทรกวีดีโอ&quot; หรือกดวาง (**Ctrl + V**) / ลากไฟล์สื่อมาวางในช่องพิมพ์ได้ทันที</span>
         <div className="flex items-center gap-3">
           <span className="text-neutral-400">💡 กด <kbd className="px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-[10px] text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">Ctrl + S</kbd> เพื่อบันทึก</span>
           <button
@@ -361,41 +440,49 @@ export function FlowEditor({
     </>
   );
 
-  // Render Inline Image Preview Gallery
-  const renderImageGallery = () => (
+  // Render Inline Media Gallery (Images & Videos)
+  const renderMediaGallery = () => (
     <>
-      {extractedImages.length > 0 && (
+      {extractedMedia.length > 0 && (
         <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
-                🖼️ รูปภาพประกอบจริงที่แทรกในขั้นตอน ({extractedImages.length} รูป)
+                🎬 สื่อรูปภาพและวีดีโอประกอบจริงในขั้นตอน ({extractedMedia.length} รายการ)
               </span>
             </div>
-            <span className="text-[11px] text-neutral-400">แสดงรูปจริงให้เห็นทันที ไม่ต้องกดสลับหน้า</span>
+            <span className="text-[11px] text-neutral-400">แสดงรูป/วีดีโอจริงให้เห็นทันที ไม่ต้องกดสลับหน้า</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {extractedImages.map((img) => (
+            {extractedMedia.map((item) => (
               <div
-                key={img.id}
+                key={item.id}
                 className="group relative rounded-xl border border-neutral-200 bg-white p-2 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 flex flex-col justify-between"
               >
-                <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-950 flex items-center justify-center border border-neutral-100 dark:border-neutral-800">
-                  <img
-                    src={img.src}
-                    alt={img.alt}
-                    className="h-full w-full object-contain"
-                  />
+                <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-neutral-900 flex items-center justify-center border border-neutral-100 dark:border-neutral-800">
+                  {item.type === "video" ? (
+                    <video
+                      src={item.src}
+                      controls
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={item.src}
+                      alt={item.alt}
+                      className="h-full w-full object-contain bg-neutral-100 dark:bg-neutral-950"
+                    />
+                  )}
                 </div>
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="truncate text-[10px] font-medium text-neutral-700 dark:text-neutral-300 max-w-[100px]" title={img.alt}>
-                    📷 {img.alt}
+                  <span className="truncate text-[10px] font-medium text-neutral-700 dark:text-neutral-300 max-w-[100px]" title={item.alt}>
+                    {item.type === "video" ? "🎥 วีดีโอ" : "📷 รูปภาพ"}: {item.alt}
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleRemoveImage(img.fullMarkdown, img.refKey, img.src)}
-                    title="ลบรูปภาพนี้ออกจากเนื้อหาและ Storage"
+                    onClick={() => handleRemoveMedia(item.fullMarkup, item.refKey, item.src)}
+                    title="ลบไฟล์นี้ออกจากเนื้อหาและ Storage"
                     className="rounded-md p-1 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/50 transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -420,6 +507,20 @@ export function FlowEditor({
         onChange={(e) => {
           if (e.target.files && e.target.files[0]) {
             handleImageFile(e.target.files[0]);
+            e.target.value = "";
+          }
+        }}
+      />
+
+      {/* Hidden file input for Video Upload */}
+      <input
+        type="file"
+        ref={videoInputRef}
+        accept="video/*"
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files[0]) {
+            handleVideoFile(e.target.files[0]);
             e.target.value = "";
           }
         }}
@@ -521,24 +622,24 @@ export function FlowEditor({
         </div>
       ) : viewMode === "split" ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
-          {/* Left Column: Editor & Image Gallery */}
+          {/* Left Column: Editor & Media Gallery */}
           <div className="flex flex-col">
             <div className="mb-2 text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center justify-between">
-              <span>📝 ช่องแก้ไขเนื้อหา (Markdown & Image Input)</span>
+              <span>📝 ช่องแก้ไขเนื้อหา (Markdown, Image & Video Input)</span>
             </div>
             {renderToolbar()}
             {renderTextarea()}
-            {renderImageGallery()}
+            {renderMediaGallery()}
           </div>
 
-          {/* Right Column: Real-time Notion-like Live Rendered Preview */}
+          {/* Right Column: Real-time Live Rendered Preview */}
           <div className="flex flex-col">
             <div className="mb-2 text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Eye className="h-3.5 w-3.5" />
                 <span>Preview</span>
               </span>
-              <span className="text-[10px] text-neutral-400 font-normal">แสดงผลรูปภาพและจัดรูปแบบจริงทันที</span>
+              <span className="text-[10px] text-neutral-400 font-normal">แสดงผลรูปภาพ วีดีโอ และการจัดรูปแบบจริงทันที</span>
             </div>
             <div className="flex-1 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 overflow-y-auto max-h-[800px] min-h-[500px]">
               <div className="mb-4 pb-3 border-b border-neutral-100 dark:border-neutral-800">
@@ -552,14 +653,15 @@ export function FlowEditor({
         <div className="p-6">
           {renderToolbar()}
           {renderTextarea()}
-          {renderImageGallery()}
+          {renderMediaGallery()}
         </div>
       )}
 
-      {/* Image Storage Management Modal */}
+      {/* Image & Video Storage Management Modal */}
       <ImageStorageModal
         isOpen={isStorageModalOpen}
         onClose={() => setIsStorageModalOpen(false)}
+        onSelectMedia={handleSelectMediaFromStorage}
       />
     </div>
   );
@@ -624,3 +726,4 @@ function compressImage(file: File, maxWidth = 1400, quality = 0.82): Promise<str
     reader.readAsDataURL(file);
   });
 }
+

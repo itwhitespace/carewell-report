@@ -212,6 +212,30 @@ function isGenericAlt(alt: string): boolean {
   return /^(image|img|รูปภาพ|รูปภาพประกอบ|รูปประกอบ|ภาพประกอบ|ภาพประกอบ_ui|ภาพประกอบ ui\/ux|img_\d+.*|image_\d+.*|undefined|null)$/i.test(clean);
 }
 
+    // Check raw HTML <video src="..." width="..." controls ...></video> or <video src="..." ... />
+    const htmlVideoMatch = line.trim().match(/^<video\s+([^>]+)>(?:<\/video>)?$/i) || line.trim().match(/^<video\s+([^>]+)\/?>$/i);
+    if (htmlVideoMatch) {
+      flushList();
+      const attrStr = htmlVideoMatch[1];
+      const srcMatch = attrStr.match(/src=["']([^"']+)["']/i);
+      const widthMatch = attrStr.match(/width=["']([^"']+)["']/i);
+      if (srcMatch) {
+        const videoUrl = srcMatch[1];
+        const width = widthMatch ? widthMatch[1] : undefined;
+        renderedElements.push(
+          <div key={`vid-html-${i}`} className="my-6 flex flex-col items-center justify-center rounded-2xl border border-neutral-200/80 bg-neutral-900 p-3 shadow-md dark:border-neutral-800">
+            <video
+              src={videoUrl}
+              controls
+              style={width ? { width: width.endsWith("%") || width.endsWith("px") ? width : `${width}px`, maxWidth: "100%" } : undefined}
+              className="max-h-[550px] w-full object-contain rounded-xl"
+            />
+          </div>
+        );
+        continue;
+      }
+    }
+
     // Check raw HTML <img src="..." width="..." alt="..." />
     const htmlImgMatch = line.trim().match(/^<img\s+([^>]+)\/?>$/i);
     if (htmlImgMatch) {
@@ -243,7 +267,7 @@ function isGenericAlt(alt: string): boolean {
       }
     }
 
-    // Check Standalone Image Line `![alt](url)` or `![alt|size](url)` or `![alt][ref]`
+    // Check Standalone Image or Video Line `![alt](url)` or `![alt|size](url)` or `![alt][ref]`
     const imageMatch = line.trim().match(/^!\[(.*?)\](?:\((.*?)\)|\[(.*?)\])$/);
     if (imageMatch) {
       flushList();
@@ -276,6 +300,28 @@ function isGenericAlt(alt: string): boolean {
           } else if (modifier.endsWith("px") || modifier.endsWith("%")) {
             customWidth = modifier;
           }
+        }
+
+        const ext = imageUrl.split(".").pop()?.split("?")[0].toLowerCase() || "";
+        const isVideoFile = ["mp4", "webm", "ogg", "mov", "m4v", "avi", "mkv"].includes(ext) || rawAlt.toLowerCase().includes("video") || rawAlt.includes("วีดีโอ");
+
+        if (isVideoFile) {
+          renderedElements.push(
+            <div key={`vid-${i}`} className="my-6 flex flex-col items-center justify-center rounded-2xl border border-neutral-200/80 bg-neutral-900 p-3 shadow-md dark:border-neutral-800">
+              <video
+                src={imageUrl}
+                controls
+                style={customWidth ? { maxWidth: customWidth, width: "100%" } : undefined}
+                className="max-h-[550px] w-full object-contain rounded-xl"
+              />
+              {altText && !isGenericAlt(altText) && (
+                <p className="mt-3 text-center text-xs font-medium text-neutral-400">
+                  🎥 {altText}
+                </p>
+              )}
+            </div>
+          );
+          continue;
         }
 
         renderedElements.push(
