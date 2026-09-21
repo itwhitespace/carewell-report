@@ -353,7 +353,7 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
     friends: `${fmtInt(f.friendCount)} คน`,
     newFriends: `${fmtInt(f.newFriends)} คน`,
     register: (
-      <span style={{ color: f.registerCount > 0 ? palette.statusGood : undefined, fontWeight: f.registerCount > 0 ? 600 : 400 }}>
+      <span style={{ color: f.registerCount > 0 ? "#FACC15" : undefined, fontWeight: f.registerCount > 0 ? 600 : 400 }}>
         {f.registerCount} คน
       </span>
     ),
@@ -367,7 +367,11 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
         {f.wonCount > 0 ? `${f.wonCount} ราย (Won)` : "0 ราย"}
       </span>
     ),
-    cancel: f.cancelCount > 0 ? String(f.cancelCount) : "-",
+    cancel: (
+      <span style={{ color: f.cancelCount > 0 ? "#F87171" : undefined, fontWeight: f.cancelCount > 0 ? 600 : 400 }}>
+        {f.cancelCount > 0 ? String(f.cancelCount) : "-"}
+      </span>
+    ),
     rate: (
       <span style={{ color: palette.statusGood, fontWeight: 600 }}>
         {fmtPct(f.registerRatePct, 2)}
