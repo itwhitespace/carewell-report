@@ -750,8 +750,8 @@ function WonFinanceSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
 
 function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
   const columns: Column[] = [
-    { key: "no", label: "ลำดับ / รหัสงาน", align: "left" },
     { key: "date", label: "วันที่เริ่มงาน", align: "left" },
+    { key: "no", label: "รหัสงาน", align: "left" },
     { key: "careLevel", label: "ระดับการดูแล", align: "left" },
     { key: "workFormat", label: "รูปแบบงาน", align: "left" },
     {
@@ -801,6 +801,7 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
   ];
 
   const rows: Record<string, React.ReactNode>[] = (wonFinance.items ?? []).map((item, idx) => ({
+    date: <span className="font-semibold text-xs text-emerald-400">{item.serviceDateLabel}</span>,
     no: (
       <div className="flex items-center gap-2">
         <span
@@ -814,7 +815,6 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
         </span>
       </div>
     ),
-    date: <span className="font-medium text-xs" style={{ color: palette.textSecondary }}>{item.serviceDateLabel}</span>,
     careLevel: (
       <span className="rounded px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: `${palette.surface}`, border: `1px solid ${palette.gridline}` }}>
         {item.careLevel}
@@ -849,8 +849,8 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
 
   if (wonFinance.items && wonFinance.items.length > 0) {
     rows.push({
-      no: <span className="font-bold text-white">ยอดรวมสะสม ({wonFinance.items.length} รายการ)</span>,
-      date: "-",
+      date: <span className="font-bold text-white">ยอดรวมสะสม ({wonFinance.items.length} รายการ)</span>,
+      no: "-",
       careLevel: "-",
       workFormat: "-",
       net: (

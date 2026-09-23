@@ -666,6 +666,20 @@ export type WonFinanceStats = {
   grandEffectiveFeePct: number | null;
 };
 
+export function fullDateTh(iso: string | null | undefined): string {
+  if (!iso) return "-";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("th-TH", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
 /** Financial breakdown of Won deals grouped by service month and itemized */
 export function monthlyWonFinance(recipients: ServiceRecipientRow[]): WonFinanceStats {
   const byMonth = new Map<
@@ -695,7 +709,7 @@ export function monthlyWonFinance(recipients: ServiceRecipientRow[]): WonFinance
           : null;
 
     const dateStr = r.service_date ? r.service_date : null;
-    const dateLabel = dateStr ? shortDateTh(dateStr) : "-";
+    const dateLabel = dateStr ? fullDateTh(dateStr) : "-";
 
     items.push({
       id: r.id,

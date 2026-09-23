@@ -500,8 +500,8 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
   );
 
   const rows: (string | number)[][] = (wonFinance.items ?? []).map((item, idx) => [
-    `${idx + 1}. ${item.jobCode}`,
     item.serviceDateLabel,
+    `${idx + 1}. ${item.jobCode}`,
     item.careLevel,
     item.workFormat,
     `${Math.round(item.netTotal).toLocaleString("th-TH")} ฿`,
@@ -512,7 +512,7 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
 
   if (wonFinance.items && wonFinance.items.length > 0) {
     rows.push([
-      `รวม (${wonFinance.items.length} รายการ)`,
+      `รวมสะสม (${wonFinance.items.length} รายการ)`,
       "-",
       "-",
       "-",
@@ -526,10 +526,10 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
   addDataTable(
     slide,
     [
-      { label: "รหัสงาน", width: 1.5 },
-      { label: "วันที่", width: 1.1 },
+      { label: "วันที่เริ่มงาน", width: 1.6 },
+      { label: "รหัสงาน", width: 1.4 },
       { label: "ระดับ", width: 0.9 },
-      { label: "รูปแบบ", width: 1.0 },
+      { label: "รูปแบบ", width: 0.9 },
       { label: "ยอดสุทธิ", width: 1.3 },
       { label: "ค่าดำเนินการ", width: 1.3 },
       { label: "จ่ายผู้ดูแล", width: 1.3 },
