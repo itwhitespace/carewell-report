@@ -41,6 +41,7 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [isSavingUnsaved, setIsSavingUnsaved] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [sharingStep, setSharingStep] = useState<FlowStep | null>(null);
 
   const selectedStep = steps.find((s) => s.id === selectedStepId) ?? steps[0] ?? null;
 
@@ -286,9 +287,12 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsShareModalOpen(true)}
+                onClick={() => {
+                  setSharingStep(selectedStep);
+                  setIsShareModalOpen(true);
+                }}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors shadow-xs"
-                title="ออกลิงก์สำหรับแชร์ให้ผู้อื่นเปิดอ่าน"
+                title="ออกลิงก์สำหรับแชร์เฉพาะขั้นตอนนี้ให้ผู้อื่นเปิดอ่าน"
               >
                 <Share2 className="h-3.5 w-3.5" />
                 <span>แชร์ (Share)</span>
@@ -309,9 +313,14 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
       {/* Share Modal */}
       <FlowShareModal
         isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
+        onClose={() => {
+          setIsShareModalOpen(false);
+          setSharingStep(null);
+        }}
         flowId={flow.id}
         flowTitle={flow.title}
+        stepNumber={sharingStep?.step_number ?? selectedStep?.step_number ?? 1}
+        stepTitle={sharingStep?.title ?? selectedStep?.title}
       />
 
       {/* Content Layout: Steps Sidebar + Main Editor */}
@@ -325,6 +334,10 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
             onCreateStep={handleCreateStepRequest}
             onDeleteStep={handleDeleteStepRequest}
             onReorderSteps={handleReorderSteps}
+            onShareStep={(step) => {
+              setSharingStep(step);
+              setIsShareModalOpen(true);
+            }}
           />
         </div>
 
@@ -335,6 +348,10 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
               step={selectedStep}
               onSaveStep={handleSaveStep}
               onDraftChange={handleDraftChange}
+              onShareStep={() => {
+                setSharingStep(selectedStep);
+                setIsShareModalOpen(true);
+              }}
             />
           ) : (
             <div className="rounded-2xl border border-dashed border-neutral-300 p-12 text-center text-sm text-neutral-400 dark:border-neutral-800">

@@ -28,6 +28,7 @@ import {
   Columns,
   Trash2,
   HardDrive,
+  Share2,
 } from "lucide-react";
 import { MarkdownViewer } from "./MarkdownViewer";
 import { ImageStorageModal } from "./ImageStorageModal";
@@ -38,10 +39,12 @@ export function FlowEditor({
   step,
   onSaveStep,
   onDraftChange,
+  onShareStep,
 }: {
   step: FlowStep;
   onSaveStep: (stepId: string, title: string, content: string) => Promise<void>;
   onDraftChange?: (isDirty: boolean, title: string, content: string) => void;
+  onShareStep?: () => void;
 }) {
   const [viewMode, setViewMode] = useState<"read" | "edit" | "split">("split");
   const [title, setTitle] = useState(step.title);
@@ -544,6 +547,19 @@ export function FlowEditor({
 
         {/* Mode switch & save indicator */}
         <div className="flex items-center gap-3">
+          {/* Share Step Button */}
+          {onShareStep && (
+            <button
+              type="button"
+              onClick={onShareStep}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors shadow-2xs"
+              title="ออกลิงก์สำหรับแชร์เฉพาะขั้นตอนนี้"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              <span>แชร์ขั้นตอนนี้</span>
+            </button>
+          )}
+
           {/* Manual Save Button */}
           <button
             type="button"

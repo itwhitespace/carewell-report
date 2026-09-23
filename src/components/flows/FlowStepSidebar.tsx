@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, ChevronUp, ChevronDown, Layers } from "lucide-react";
+import { Plus, Trash2, ChevronUp, ChevronDown, Layers, Share2 } from "lucide-react";
 import type { FlowStep } from "@/lib/flows";
 
 export function FlowStepSidebar({
@@ -11,6 +11,7 @@ export function FlowStepSidebar({
   onCreateStep,
   onDeleteStep,
   onReorderSteps,
+  onShareStep,
 }: {
   steps: FlowStep[];
   selectedStepId: string | null;
@@ -18,6 +19,7 @@ export function FlowStepSidebar({
   onCreateStep: (title: string) => Promise<void>;
   onDeleteStep: (stepId: string) => Promise<void>;
   onReorderSteps: (stepIds: string[]) => Promise<void>;
+  onShareStep?: (step: FlowStep) => void;
 }) {
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -123,8 +125,20 @@ export function FlowStepSidebar({
                   <span className="truncate">{step.title}</span>
                 </div>
 
-                {/* Actions: Move Up / Down, Delete */}
+                {/* Actions: Share, Move Up / Down, Delete */}
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {onShareStep && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onShareStep(step);
+                      }}
+                      title="แชร์ขั้นตอนนี้"
+                      className="p-1 hover:text-blue-600 rounded text-neutral-400"
+                    >
+                      <Share2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   {idx > 0 && (
                     <button
                       onClick={(e) => {

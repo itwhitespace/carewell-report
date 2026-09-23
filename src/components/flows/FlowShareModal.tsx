@@ -8,20 +8,26 @@ export function FlowShareModal({
   onClose,
   flowId,
   flowTitle,
+  stepNumber,
+  stepTitle,
 }: {
   isOpen: boolean;
   onClose: () => void;
   flowId: string;
   flowTitle: string;
+  stepNumber?: number;
+  stepTitle?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setShareUrl(`${window.location.origin}/flows/${flowId}/view`);
+      const baseUrl = `${window.location.origin}/flows/${flowId}/view`;
+      const finalUrl = stepNumber ? `${baseUrl}?step=${stepNumber}` : baseUrl;
+      setShareUrl(finalUrl);
     }
-  }, [flowId]);
+  }, [flowId, stepNumber]);
 
   if (!isOpen) return null;
 
@@ -50,10 +56,10 @@ export function FlowShareModal({
             </div>
             <div>
               <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
-                แชร์ลิงก์เปิดอ่าน (Share Flow)
+                {stepTitle ? "แชร์ลิงก์ขั้นตอนนี้ (Share Step)" : "แชร์ลิงก์เปิดอ่าน (Share Flow)"}
               </h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                {flowTitle}
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-[340px]">
+                {stepTitle ? (stepNumber ? `ขั้นตอนที่ ${stepNumber}: ${stepTitle}` : stepTitle) : flowTitle}
               </p>
             </div>
           </div>
@@ -70,7 +76,7 @@ export function FlowShareModal({
           <div className="flex items-start gap-2.5">
             <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
             <div className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed">
-              <span className="font-semibold">โหมดเปิดอ่านเท่านั้น (Read-Only View):</span> ผู้ที่ได้รับลิงก์จะสามารถเปิดอ่านขั้นตอนและดูสื่อประกอบได้ แต่จะ<strong>ไม่เห็นแถบเมนูจัดการ</strong> และ<strong>ไม่สามารถแก้ไขเนื้อหาได้</strong>
+              <span className="font-semibold">โหมดเปิดอ่านเฉพาะเนื้อหา (Content Only):</span> ผู้ที่ได้รับลิงก์จะเห็นเฉพาะเนื้อหาของเรื่องนี้ในรูปแบบหน้าอ่านเอกสารที่สะอาดตา <strong>ไม่มีแถบเมนูหลัก ไม่มีโลโก้ และไม่มีปุ่มแก้ไขใดๆ</strong>
             </div>
           </div>
         </div>
@@ -78,7 +84,7 @@ export function FlowShareModal({
         {/* Link Input & Copy Button */}
         <div className="space-y-2">
           <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-300">
-            ลิงก์สำหรับแชร์ (Public View URL)
+            ลิงก์สำหรับแชร์เฉพาะเรื่องนี้ (Share Link)
           </label>
           <div className="flex items-center gap-2">
             <input
