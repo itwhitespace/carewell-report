@@ -780,36 +780,42 @@ function CancellationAnalysisSlide(cancellation: CancellationStats, palette: Cha
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         {/* Left Column: Reasons Breakdown (5 cols) */}
         <div
-          className="rounded-2xl border p-5 backdrop-blur-sm shadow-md lg:col-span-5"
+          className="rounded-2xl border p-4 backdrop-blur-sm shadow-md lg:col-span-5 flex flex-col justify-between"
           style={{ borderColor: palette.gridline, backgroundColor: palette.surface }}
         >
-          <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: palette.gridline }}>
-            <h3 className="text-sm font-bold" style={{ color: palette.textPrimary }}>
-              📊 สัดส่วนสาเหตุการยกเลิกงาน
+          <div className="flex items-center justify-between pb-2.5 border-b" style={{ borderColor: palette.gridline }}>
+            <h3 className="text-xs sm:text-sm font-bold flex items-center gap-1.5" style={{ color: palette.textPrimary }}>
+              <span>📊</span>
+              <span>สัดส่วนสาเหตุการยกเลิกงาน</span>
             </h3>
-            <span className="text-xs" style={{ color: palette.muted }}>
-              รวม {cancellation.totalCancelled} ราย
+            <span className="text-[11px] font-medium" style={{ color: palette.muted }}>
+              บันทึกทั้งหมด {cancellation.totalCancelled} ราย
             </span>
           </div>
 
           {cancellation.reasons.length === 0 ? (
-            <p className="mt-4 text-xs" style={{ color: palette.muted }}>
+            <p className="py-8 text-center text-xs" style={{ color: palette.muted }}>
               ยังไม่มีการบันทึกสาเหตุการยกเลิกงานในระบบ
             </p>
           ) : (
-            <div className="mt-4 space-y-3.5">
+            <div className="mt-3 max-h-[360px] overflow-y-auto pr-1.5 space-y-2.5 custom-scrollbar">
               {cancellation.reasons.map((r, i) => (
-                <div key={i} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium truncate max-w-[220px]" style={{ color: palette.textPrimary }} title={r.reason}>
-                      {i + 1}. {r.reason}
+                <div
+                  key={i}
+                  className="rounded-xl border p-2.5 transition-all hover:border-neutral-700"
+                  style={{ borderColor: palette.gridline, backgroundColor: palette.pagePlane }}
+                >
+                  <div className="flex items-start justify-between gap-2 text-xs">
+                    <span className="font-medium text-[11px] leading-tight flex-1" style={{ color: palette.textPrimary }}>
+                      <span className="font-bold text-neutral-400 mr-1">{i + 1}.</span>
+                      {r.reason}
                     </span>
-                    <span className="font-mono font-bold" style={{ color: palette.statusCritical }}>
-                      {r.count} ราย <span className="text-[11px] font-normal" style={{ color: palette.muted }}>({fmtPct(r.pct, 1)})</span>
+                    <span className="font-mono font-bold text-[11px] shrink-0 text-right" style={{ color: palette.statusCritical }}>
+                      {r.count} ราย <span className="font-normal text-[10px]" style={{ color: palette.muted }}>({fmtPct(r.pct, 1)})</span>
                     </span>
                   </div>
                   {/* Progress bar */}
-                  <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: `${palette.gridline}` }}>
+                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: `${palette.gridline}` }}>
                     <div
                       className="h-full rounded-full transition-all duration-500"
                       style={{
@@ -826,36 +832,49 @@ function CancellationAnalysisSlide(cancellation: CancellationStats, palette: Cha
 
         {/* Right Column: Strategic Action Plans (7 cols) */}
         <div
-          className="rounded-2xl border p-5 backdrop-blur-sm shadow-md lg:col-span-7 flex flex-col justify-between"
+          className="rounded-2xl border p-4 backdrop-blur-sm shadow-md lg:col-span-7 flex flex-col justify-between"
           style={{ borderColor: palette.gridline, backgroundColor: palette.surface }}
         >
-          <div className="pb-3 border-b" style={{ borderColor: palette.gridline }}>
-            <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: palette.textPrimary }}>
+          <div className="flex items-center justify-between pb-2.5 border-b" style={{ borderColor: palette.gridline }}>
+            <h3 className="text-xs sm:text-sm font-bold flex items-center gap-1.5" style={{ color: palette.textPrimary }}>
               <span>💡</span>
-              <span>การวิเคราะห์เชิงลึกและแนวทางการแก้ปัญหา (Actionable Recommendations)</span>
+              <span>วิเคราะห์กลุ่มปัญหา & แนวทางแก้ไข (Actionable Strategies)</span>
             </h3>
+            <span className="text-[11px] font-semibold text-emerald-400">
+              วิเคราะห์จาก 4 กลุ่มสาเหตุจริง
+            </span>
           </div>
 
-          <div className="mt-3.5 space-y-3">
+          <div className="mt-3 space-y-2.5 max-h-[360px] overflow-y-auto pr-1.5 custom-scrollbar">
             {cancellation.insights.map((ins, idx) => (
               <div
                 key={idx}
                 className="rounded-xl border p-3 transition-colors hover:border-emerald-500/30"
                 style={{ borderColor: palette.gridline, backgroundColor: palette.pagePlane }}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <h4 className="text-xs font-bold" style={{ color: palette.statusGood }}>
-                    {idx + 1}. {ins.title}
-                  </h4>
-                  <span
-                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                    style={{ backgroundColor: `${palette.accent}20`, color: palette.accent }}
-                  >
-                    {ins.category}
-                  </span>
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-500/20 text-xs font-bold text-emerald-400">
+                      {idx + 1}
+                    </span>
+                    <h4 className="text-xs font-bold" style={{ color: palette.textPrimary }}>
+                      {ins.title}
+                    </h4>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded-md bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-400">
+                      {ins.count} ราย ({fmtPct(ins.pct, 1)})
+                    </span>
+                  </div>
                 </div>
-                <p className="mt-1 text-[11px] leading-relaxed" style={{ color: palette.textSecondary }}>
-                  <span className="font-semibold text-neutral-400">ประเด็น:</span> {ins.description}
+
+                <div className="mt-1.5 flex items-center gap-1 text-[10px] text-amber-400/90 bg-amber-500/10 rounded-md px-2 py-0.5 font-medium">
+                  <span className="font-bold">สาเหตุที่พบ:</span>
+                  <span className="truncate">{ins.sourceReasons}</span>
+                </div>
+
+                <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: palette.textSecondary }}>
+                  <span className="font-semibold text-neutral-400">วิเคราะห์:</span> {ins.description}
                 </p>
                 <p className="mt-1 text-[11px] font-medium leading-relaxed" style={{ color: palette.textPrimary }}>
                   <span className="font-semibold text-emerald-400">แนวทางแก้ไข:</span> {ins.actionPlan}

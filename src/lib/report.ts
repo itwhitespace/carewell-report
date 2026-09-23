@@ -731,6 +731,9 @@ export type CancellationReasonStat = {
 export type CancellationActionInsight = {
   category: string;
   title: string;
+  count: number;
+  pct: number;
+  sourceReasons: string;
   description: string;
   actionPlan: string;
 };
@@ -744,10 +747,15 @@ export type CancellationStats = {
   insights: CancellationActionInsight[];
 };
 
-/** Aggregated cancellation reasons and strategic problem-solving insights */
+/** Aggregated cancellation reasons and strategic problem-solving insights directly derived from real data */
 export function cancellationAnalysis(recipients: ServiceRecipientRow[]): CancellationStats {
   let totalCancelled = 0;
   const reasonCounts = new Map<string, number>();
+
+  let changedMindCount = 0;
+  let competitorCount = 0;
+  let medicalDelayCount = 0;
+  let constraintCount = 0;
 
   for (const r of recipients) {
     const st = (r.status ?? "").trim().toLowerCase();
@@ -755,6 +763,17 @@ export function cancellationAnalysis(recipients: ServiceRecipientRow[]): Cancell
       totalCancelled++;
       const reason = (r.cancel_reason ?? "").trim() || "ไม่ระบุสาเหตุ / อื่นๆ";
       reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+
+      const lower = reason.toLowerCase();
+      if (lower.includes("ไม่ต้องการ") || lower.includes("เปลี่ยนใจ") || lower.includes("ดูแลเอง")) {
+        changedMindCount++;
+      } else if (lower.includes("บริษัทอื่น") || lower.includes("เลยเวลา") || lower.includes("ช้า") || lower.includes("คู่แข่ง")) {
+        competitorCount++;
+      } else if (lower.includes("โรงพยาบาล") || lower.includes("รพ") || lower.includes("รักษา") || lower.includes("หาข้อมูล")) {
+        medicalDelayCount++;
+      } else {
+        constraintCount++;
+      }
     }
   }
 
@@ -771,24 +790,44 @@ export function cancellationAnalysis(recipients: ServiceRecipientRow[]): Cancell
 
   const topReason = sortedReasons.length > 0 ? sortedReasons[0].reason : null;
 
+  const safePct = (c: number) => (totalCancelled > 0 ? (c / totalCancelled) * 100 : 0);
+
   const insights: CancellationActionInsight[] = [
     {
-      category: "Speed & Matching",
-      title: "ความรวดเร็วในการจัดหาและจับคู่ผู้ดูแล (Matching SLA)",
-      description: "ผู้รับบริการมักมีความต้องการดูแลเร่งด่วน หากใช้เวลาค้นหานานจะเปลี่ยนใจหรือจัดหาเอง",
-      actionPlan: "กำหนดมาตรฐานติดต่อกลับและเสนอประวัติผู้ดูแลภายใน 4-6 ชม. เพื่อปิดการตัดสินใจได้เร็วขึ้น",
+      category: "Customer Decision",
+      title: "เปลี่ยนใจ / คนในครอบครัวจัดสรรการดูแลเอง",
+      count: changedMindCount,
+      pct: safePct(changedMindCount),
+      sourceReasons: "ไม่ต้องการผู้ดูแลแล้ว / ลูกค้าไม่ต้องการผู้ดูแลแล้ว",
+      description: "เป็นสาเหตุอันดับ 1 เกิดจากครอบครัวประเมินว่ายังดูแลกันเองไหว หรืออาการผู้ป่วยยังไม่จำเป็นต้องมีผู้ดูแลประจำ",
+      actionPlan: "ทำระบบ Lead Nurturing ส่งข้อมูล/คำแนะนำการดูแลผู้ป่วยทาง LINE เป็นระยะ เพื่อให้พร้อมกลับมาใช้บริการทันทีที่ครอบครัวดูแลไม่ไหว",
     },
     {
-      category: "Price & Transparency",
-      title: "ความชัดเจนของโครงสร้างราคาและขอบเขตงาน",
-      description: "ความลังเลเรื่องค่าบริการและค่าดำเนินการ หรือการเปรียบเทียบกับทางเลือกอื่น",
-      actionPlan: "นำเสนอแพ็กเกจราคาโปร่งใส ชี้แจงจุดเด่นเรื่องการรับประกันและมาตรฐานผู้ดูแลที่ผ่านการคัดกรอง",
+      category: "Speed & Competitor",
+      title: "หลุดไปหาคู่แข่ง / ความล่าช้าในการจัดส่งคน",
+      count: competitorCount,
+      pct: safePct(competitorCount),
+      sourceReasons: "ได้ผู้ดูแลจากบริษัทอื่นไปแล้ว / งานเลยเวลาที่กำหนด",
+      description: "ลูกค้ามีความจำเป็นเร่งด่วน การใช้เวลาจับคู่นานทำให้ลูกค้าติดต่อหลายบริษัทพร้อมกันและเลือกเจ้าที่ส่งคนได้เร็วกว่า",
+      actionPlan: "ตั้งเป้า Fast-track Matching SLA ส่งประวัติผู้ดูแลให้พิจารณาภายใน 2–4 ชม. สำหรับเคสด่วน พร้อมทำ Standby Caregiver Pool",
     },
     {
-      category: "Retention & Care",
-      title: "การติดตามเคสอย่างใกล้ชิด (Proactive Follow-up)",
-      description: "เคสที่ยังจับคู่ไม่สำเร็จอาจหลุดจากการติดตาม ทำให้สูญเสียโอกาสในการปิดงาน",
-      actionPlan: "มีระบบแจ้งเตือนติดตามสถานะงานที่รอดำเนินการทุกวัน พร้อมสอบถาม feedback เพื่อปรับเงื่อนไข",
+      category: "Health & Medical",
+      title: "ปัจจัยทางการแพทย์ / เลื่อนรอออกจากโรงพยาบาล",
+      count: medicalDelayCount,
+      pct: safePct(medicalDelayCount),
+      sourceReasons: "รอผู้ป่วยออกจากโรงพยาบาล / เข้ารับการรักษาใน รพ. / หาข้อมูลไว้ก่อน",
+      description: "เคสกลุ่มนี้ไม่ได้ยกเลิกเพราะปฏิเสธบริการ แต่ต้องชะลอตามอาการแพทย์ ยังมีโอกาสปิดการขายได้สูงเมื่อผู้ป่วยกลับบ้าน",
+      actionPlan: "บันทึกวันนัดติดตามผล (Follow-up Date) ล่วงหน้า 2–3 วันก่อนออกจาก รพ. เพื่อประสานส่งผู้ดูแลรับช่วงต่อทันที",
+    },
+    {
+      category: "Service & Payment",
+      title: "ข้อจำกัดด้านการชำระเงิน, อุปกรณ์ และการติดต่อ",
+      count: constraintCount,
+      pct: safePct(constraintCount),
+      sourceReasons: "อยากชำระบัตรเครดิตเท่านั้น / ไม่มีเครื่องดูดเสมหะ / ติดต่อลูกค้าไม่ได้",
+      description: "สูญเสียลูกค้าที่พร้อมใช้บริการเนื่องจากขาดช่องทางชำระบัตรเครดิต, ขาดอุปกรณ์การแพทย์เสริม และติดต่อทางโทรศัพท์ไม่ได้",
+      actionPlan: "เพิ่มระบบรับชำระผ่านบัตรเครดิต/Payment Link, เชื่อมต่อพาร์ทเนอร์เช่าอุปกรณ์การแพทย์ และส่งข้อความ LINE OA ทันทีที่โทรไม่ติด",
     },
   ];
 

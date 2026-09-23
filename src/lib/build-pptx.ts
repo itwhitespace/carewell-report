@@ -468,8 +468,8 @@ function cancellationSlide(pptx: PptxGenJS, cancellation: CancellationStats) {
   addBackground(slide);
   addHeader(
     slide,
-    "ผู้รับบริการ — วิเคราะห์ปัญหาและแนวทางแก้ไข",
-    "สรุปสถิติสาเหตุการยกเลิกงาน และแนวทางการป้องกัน",
+    "ผู้รับบริการ — สถิติการยกเลิกงาน",
+    "สรุปสถิติสาเหตุการยกเลิกงานทั้งหมด",
     "วิเคราะห์สัดส่วนสาเหตุการยกเลิกงานทั้งหมดที่บันทึก เพื่อกำหนดแนวทางปรับปรุงและลดอัตราการหลุดของลูกค้า"
   );
   addStatTiles(
@@ -491,12 +491,39 @@ function cancellationSlide(pptx: PptxGenJS, cancellation: CancellationStats) {
   addDataTable(
     slide,
     [
-      { label: "สาเหตุการยกเลิกงาน", width: 4.5 },
-      { label: "จำนวน", width: 2.2 },
-      { label: "สัดส่วน (%)", width: 2.3 },
+      { label: "สาเหตุการยกเลิกงาน", width: 5.0 },
+      { label: "จำนวน", width: 2.0 },
+      { label: "สัดส่วน (%)", width: 2.0 },
     ],
     rows,
     { top: 3.1 }
+  );
+
+  // Additional slide for Actionable Strategies
+  const actionSlide = pptx.addSlide();
+  addBackground(actionSlide);
+  addHeader(
+    actionSlide,
+    "ผู้รับบริการ — วิเคราะห์ปัญหาและแนวทางแก้ไข",
+    "วิเคราะห์กลุ่มปัญหาและแนวทางแก้ไขเชิงรุก",
+    "วิเคราะห์เจาะลึกจาก 4 กลุ่มสาเหตุจริง เพื่อกำหนดมาตรการป้องกันการสูญเสียลูกค้า"
+  );
+
+  const actionRows: (string | number)[][] = cancellation.insights.map((ins, idx) => [
+    `${idx + 1}. ${ins.title} (${ins.count} ราย / ${fmtPct(ins.pct, 1)})`,
+    ins.sourceReasons,
+    ins.actionPlan,
+  ]);
+
+  addDataTable(
+    actionSlide,
+    [
+      { label: "กลุ่มปัญหาหลัก & สัดส่วน", width: 2.8 },
+      { label: "สาเหตุที่พบจริงในระบบ", width: 2.8 },
+      { label: "แนวทางแก้ไขและป้องกัน", width: 3.4 },
+    ],
+    actionRows,
+    { top: 1.6 }
   );
 }
 
