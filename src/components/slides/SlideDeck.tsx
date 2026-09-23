@@ -750,8 +750,9 @@ function WonFinanceSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
 
 function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
   const columns: Column[] = [
+    { key: "no", label: "ลำดับ", align: "center" },
     { key: "date", label: "วันที่เริ่มงาน", align: "left" },
-    { key: "no", label: "รหัสงาน", align: "left" },
+    { key: "jobCode", label: "รหัสงาน", align: "left" },
     { key: "careLevel", label: "ระดับการดูแล", align: "left" },
     { key: "workFormat", label: "รูปแบบงาน", align: "left" },
     {
@@ -801,19 +802,19 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
   ];
 
   const rows: Record<string, React.ReactNode>[] = (wonFinance.items ?? []).map((item, idx) => ({
-    date: <span className="font-semibold text-xs text-emerald-400">{item.serviceDateLabel}</span>,
     no: (
-      <div className="flex items-center gap-2">
-        <span
-          className="inline-flex h-5 w-5 items-center justify-center rounded-md text-[11px] font-bold"
-          style={{ backgroundColor: `${palette.accent}22`, color: palette.accent }}
-        >
-          {idx + 1}
-        </span>
-        <span className="font-semibold" style={{ color: palette.textPrimary }}>
-          {item.jobCode}
-        </span>
-      </div>
+      <span
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold"
+        style={{ backgroundColor: `${palette.accent}22`, color: palette.accent }}
+      >
+        {idx + 1}
+      </span>
+    ),
+    date: <span className="font-semibold text-xs text-emerald-400">{item.serviceDateLabel}</span>,
+    jobCode: (
+      <span className="font-semibold text-xs" style={{ color: palette.textPrimary }}>
+        {item.jobCode}
+      </span>
     ),
     careLevel: (
       <span className="rounded px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: `${palette.surface}`, border: `1px solid ${palette.gridline}` }}>
@@ -849,8 +850,9 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
 
   if (wonFinance.items && wonFinance.items.length > 0) {
     rows.push({
-      date: <span className="font-bold text-white">ยอดรวมสะสม ({wonFinance.items.length} รายการ)</span>,
       no: "-",
+      date: <span className="font-bold text-white">ยอดรวมสะสม ({wonFinance.items.length} รายการ)</span>,
+      jobCode: "-",
       careLevel: "-",
       workFormat: "-",
       net: (
