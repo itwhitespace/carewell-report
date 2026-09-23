@@ -2,10 +2,12 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import {
   buildGrowthSeries,
   caregiverPositionByMonth,
+  cancellationAnalysis,
   latestSnapshot,
   monthlyChannelFunnel,
   monthlyConversion,
   monthlyLineOaStats,
+  monthlyWonFinance,
   rankAndFold,
   statusCounts,
   weeklyConversion,
@@ -43,7 +45,9 @@ export async function loadSlideData(): Promise<SlideDeckData> {
       .from("caregivers")
       .select("status, province, job_type, position, gender, registered_date, approved_date"),
     supabase.from("report_notes").select("topic, detail").order("sort_order").order("created_at"),
-    supabase.from("service_recipients").select("service_date, status"),
+    supabase
+      .from("service_recipients")
+      .select("id, job_code, service_date, care_level, work_format, status, net_total, fee_percent, fee_amount, caregiver_net, cancel_reason"),
   ]);
 
   const lineOaRows = (lineOaRes.data ?? []) as LineOaRow[];
@@ -98,5 +102,7 @@ export async function loadSlideData(): Promise<SlideDeckData> {
     accounts,
     positionStats: caregiverPositionByMonth(caregivers),
     notes,
+    wonFinance: monthlyWonFinance(recipients),
+    cancellation: cancellationAnalysis(recipients),
   };
 }

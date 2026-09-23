@@ -48,6 +48,7 @@ create table if not exists public.service_recipients (
   fee_percent numeric,
   fee_amount numeric,
   caregiver_net numeric,
+  cancel_reason text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

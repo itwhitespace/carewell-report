@@ -499,8 +499,17 @@ export function weeklyConversion(
 
 
 export type ServiceRecipientRow = {
+  id?: string;
+  job_code?: string | null;
   service_date: string | null;
+  care_level?: string | null;
+  work_format?: string | null;
   status: string | null;
+  net_total?: number | null;
+  fee_percent?: number | null;
+  fee_amount?: number | null;
+  caregiver_net?: number | null;
+  cancel_reason?: string | null;
 };
 
 export type ChannelFunnelStat = {
@@ -623,3 +632,173 @@ export function caregiverPositionByMonth(caregivers: CaregiverRow[]): PositionMo
     rows,
   };
 }
+
+export type WonFinanceMonthlyStat = {
+  monthKey: string;
+  monthLabel: string;
+  wonCount: number;
+  totalNet: number;
+  totalFee: number;
+  totalCaregiverNet: number;
+  effectiveFeePct: number | null;
+};
+
+export type WonFinanceStats = {
+  monthly: WonFinanceMonthlyStat[];
+  grandWonCount: number;
+  grandTotalNet: number;
+  grandTotalFee: number;
+  grandTotalCaregiverNet: number;
+  grandEffectiveFeePct: number | null;
+};
+
+/** Financial breakdown of Won deals grouped by service month */
+export function monthlyWonFinance(recipients: ServiceRecipientRow[]): WonFinanceStats {
+  const byMonth = new Map<
+    string,
+    {
+      wonCount: number;
+      totalNet: number;
+      totalFee: number;
+      totalCaregiverNet: number;
+    }
+  >();
+
+  for (const r of recipients) {
+    if (!r.service_date) continue;
+    const st = (r.status ?? "").trim().toLowerCase();
+    if (st !== "won") continue;
+
+    const mk = monthKeyOf(r.service_date);
+    const existing = byMonth.get(mk) ?? {
+      wonCount: 0,
+      totalNet: 0,
+      totalFee: 0,
+      totalCaregiverNet: 0,
+    };
+
+    const net = Number(r.net_total) || 0;
+    const fee = Number(r.fee_amount) || 0;
+    const cg = Number(r.caregiver_net) || (net > 0 ? Math.max(0, net - fee) : 0);
+
+    existing.wonCount += 1;
+    existing.totalNet += net;
+    existing.totalFee += fee;
+    existing.totalCaregiverNet += cg;
+
+    byMonth.set(mk, existing);
+  }
+
+  const sortedMonths = [...byMonth.keys()].sort();
+  const monthly: WonFinanceMonthlyStat[] = sortedMonths.map((mk) => {
+    const data = byMonth.get(mk)!;
+    const effectiveFeePct =
+      data.totalNet > 0 ? (data.totalFee / data.totalNet) * 100 : null;
+    return {
+      monthKey: mk,
+      monthLabel: monthLabelTh(mk),
+      wonCount: data.wonCount,
+      totalNet: data.totalNet,
+      totalFee: data.totalFee,
+      totalCaregiverNet: data.totalCaregiverNet,
+      effectiveFeePct,
+    };
+  });
+
+  const grandWonCount = monthly.reduce((s, m) => s + m.wonCount, 0);
+  const grandTotalNet = monthly.reduce((s, m) => s + m.totalNet, 0);
+  const grandTotalFee = monthly.reduce((s, m) => s + m.totalFee, 0);
+  const grandTotalCaregiverNet = monthly.reduce((s, m) => s + m.totalCaregiverNet, 0);
+  const grandEffectiveFeePct =
+    grandTotalNet > 0 ? (grandTotalFee / grandTotalNet) * 100 : null;
+
+  return {
+    monthly,
+    grandWonCount,
+    grandTotalNet,
+    grandTotalFee,
+    grandTotalCaregiverNet,
+    grandEffectiveFeePct,
+  };
+}
+
+export type CancellationReasonStat = {
+  reason: string;
+  count: number;
+  pct: number;
+};
+
+export type CancellationActionInsight = {
+  category: string;
+  title: string;
+  description: string;
+  actionPlan: string;
+};
+
+export type CancellationStats = {
+  totalRecipients: number;
+  totalCancelled: number;
+  cancellationRatePct: number | null;
+  topReason: string | null;
+  reasons: CancellationReasonStat[];
+  insights: CancellationActionInsight[];
+};
+
+/** Aggregated cancellation reasons and strategic problem-solving insights */
+export function cancellationAnalysis(recipients: ServiceRecipientRow[]): CancellationStats {
+  let totalCancelled = 0;
+  const reasonCounts = new Map<string, number>();
+
+  for (const r of recipients) {
+    const st = (r.status ?? "").trim().toLowerCase();
+    if (st === "ยกเลิกงาน" || st === "cancel" || st === "cancelled") {
+      totalCancelled++;
+      const reason = (r.cancel_reason ?? "").trim() || "ไม่ระบุสาเหตุ / อื่นๆ";
+      reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+    }
+  }
+
+  const totalRecipients = recipients.length;
+  const cancellationRatePct = totalRecipients > 0 ? (totalCancelled / totalRecipients) * 100 : null;
+
+  const sortedReasons = [...reasonCounts.entries()]
+    .map(([reason, count]) => ({
+      reason,
+      count,
+      pct: totalCancelled > 0 ? (count / totalCancelled) * 100 : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const topReason = sortedReasons.length > 0 ? sortedReasons[0].reason : null;
+
+  const insights: CancellationActionInsight[] = [
+    {
+      category: "Speed & Matching",
+      title: "ความรวดเร็วในการจัดหาและจับคู่ผู้ดูแล (Matching SLA)",
+      description: "ผู้รับบริการมักมีความต้องการดูแลเร่งด่วน หากใช้เวลาค้นหานานจะเปลี่ยนใจหรือจัดหาเอง",
+      actionPlan: "กำหนดมาตรฐานติดต่อกลับและเสนอประวัติผู้ดูแลภายใน 4-6 ชม. เพื่อปิดการตัดสินใจได้เร็วขึ้น",
+    },
+    {
+      category: "Price & Transparency",
+      title: "ความชัดเจนของโครงสร้างราคาและขอบเขตงาน",
+      description: "ความลังเลเรื่องค่าบริการและค่าดำเนินการ หรือการเปรียบเทียบกับทางเลือกอื่น",
+      actionPlan: "นำเสนอแพ็กเกจราคาโปร่งใส ชี้แจงจุดเด่นเรื่องการรับประกันและมาตรฐานผู้ดูแลที่ผ่านการคัดกรอง",
+    },
+    {
+      category: "Retention & Care",
+      title: "การติดตามเคสอย่างใกล้ชิด (Proactive Follow-up)",
+      description: "เคสที่ยังจับคู่ไม่สำเร็จอาจหลุดจากการติดตาม ทำให้สูญเสียโอกาสในการปิดงาน",
+      actionPlan: "มีระบบแจ้งเตือนติดตามสถานะงานที่รอดำเนินการทุกวัน พร้อมสอบถาม feedback เพื่อปรับเงื่อนไข",
+    },
+  ];
+
+  return {
+    totalRecipients,
+    totalCancelled,
+    cancellationRatePct,
+    topReason,
+    reasons: sortedReasons,
+    insights,
+  };
+}
+

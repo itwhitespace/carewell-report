@@ -1,6 +1,6 @@
 import PptxGenJS from "pptxgenjs";
 import type { SlideDeckData, AccountDetail, ReportNote } from "@/components/slides/SlideDeck";
-import type { PositionMonthStats } from "@/lib/report";
+import type { PositionMonthStats, WonFinanceStats, CancellationStats } from "@/lib/report";
 
 // Plain hex (no '#') mirroring the dark palette in chart-theme.ts — kept as
 // a separate constant set here since that module is client-only ("use
@@ -392,6 +392,114 @@ function notesSlide(pptx: PptxGenJS, notes: ReportNote[]) {
   );
 }
 
+function wonFinanceSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addHeader(
+    slide,
+    "ผู้รับบริการ — ข้อมูลการเงิน",
+    "ตารางข้อมูลการเงิน งานสถานะ Won รายเดือน",
+    "สรุปยอดสุทธิทั้งหมด, รายได้ค่าดำเนินการ, และยอดที่ผู้ดูแลได้รับ สำหรับงานที่ปิดการขายสำเร็จแยกรายเดือน"
+  );
+  addStatTiles(
+    slide,
+    [
+      {
+        label: "ยอดสุทธิสะสมทั้งหมด (Total Net)",
+        value: `${wonFinance.grandTotalNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+        color: C.textPrimary,
+      },
+      {
+        label: "ค่าดำเนินการสะสมรวม (Total Fee)",
+        value: `${wonFinance.grandTotalFee.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+        color: C.statusWarning,
+      },
+      {
+        label: "ยอดจ่ายผู้ดูแลรวม (Caregiver Net)",
+        value: `${wonFinance.grandTotalCaregiverNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+        color: C.statusGood,
+      },
+      {
+        label: "ปิดการขายสำเร็จรวม (Won Deals)",
+        value: `${wonFinance.grandWonCount} ราย`,
+        color: C.accent,
+      },
+    ],
+    1.4
+  );
+
+  const rows: (string | number)[][] = wonFinance.monthly.map((m) => [
+    shortMonthLabel(m.monthKey),
+    `${m.wonCount} ราย`,
+    `${m.totalNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+    `${m.totalFee.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+    `${m.totalCaregiverNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+    fmtPct(m.effectiveFeePct, 2),
+  ]);
+
+  if (wonFinance.monthly.length > 0) {
+    rows.push([
+      "ยอดรวมสะสม (Total)",
+      `${wonFinance.grandWonCount} ราย`,
+      `${wonFinance.grandTotalNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+      `${wonFinance.grandTotalFee.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+      `${wonFinance.grandTotalCaregiverNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+      fmtPct(wonFinance.grandEffectiveFeePct, 2),
+    ]);
+  }
+
+  addDataTable(
+    slide,
+    [
+      { label: "เดือน (รอบปี 2569)", width: 1.5 },
+      { label: "ปิดการขายสำเร็จ", width: 1.5 },
+      { label: "ยอดสุทธิทั้งหมด", width: 1.6 },
+      { label: "ค่าดำเนินการ", width: 1.5 },
+      { label: "ยอดที่ผู้ดูแลได้รับ", width: 1.6 },
+      { label: "สัดส่วนค่าดำเนินการ", width: 1.3 },
+    ],
+    rows,
+    { top: 3.1, highlightLastRow: wonFinance.monthly.length > 0 }
+  );
+}
+
+function cancellationSlide(pptx: PptxGenJS, cancellation: CancellationStats) {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addHeader(
+    slide,
+    "ผู้รับบริการ — วิเคราะห์ปัญหาและแนวทางแก้ไข",
+    "สรุปสถิติสาเหตุการยกเลิกงาน และแนวทางการป้องกัน",
+    "วิเคราะห์สัดส่วนสาเหตุการยกเลิกงานทั้งหมดที่บันทึก เพื่อกำหนดแนวทางปรับปรุงและลดอัตราการหลุดของลูกค้า"
+  );
+  addStatTiles(
+    slide,
+    [
+      { label: "จำนวนงานที่ยกเลิกทั้งหมด", value: `${cancellation.totalCancelled} ราย`, color: C.statusCritical },
+      { label: "อัตราการยกเลิกงาน (Cancel Rate)", value: fmtPct(cancellation.cancellationRatePct, 1), color: C.statusCritical },
+      { label: "สาเหตุหลักที่พบบ่อยอันดับ 1", value: cancellation.topReason ?? "ไม่มีข้อมูล", color: C.statusWarning },
+    ],
+    1.4
+  );
+
+  const rows: (string | number)[][] = cancellation.reasons.map((r, i) => [
+    `${i + 1}. ${r.reason}`,
+    `${r.count} ราย`,
+    fmtPct(r.pct, 1),
+  ]);
+
+  addDataTable(
+    slide,
+    [
+      { label: "สาเหตุการยกเลิกงาน", width: 4.5 },
+      { label: "จำนวน", width: 2.2 },
+      { label: "สัดส่วน (%)", width: 2.3 },
+    ],
+    rows,
+    { top: 3.1 }
+  );
+}
+
 export async function buildPptx(data: SlideDeckData): Promise<Buffer> {
   const pptx = new PptxGenJS();
   pptx.defineLayout({ name: "CAREWELL", width: 10, height: 5.63 });
@@ -423,7 +531,11 @@ export async function buildPptx(data: SlideDeckData): Promise<Buffer> {
     accountSlides(pptx, carewellteam);
     positionSlide(pptx, data.positionStats);
   }
-  if (carewell) accountSlides(pptx, carewell);
+  if (carewell) {
+    accountSlides(pptx, carewell);
+    wonFinanceSlide(pptx, data.wonFinance);
+    cancellationSlide(pptx, data.cancellation);
+  }
 
   notesSlide(pptx, data.notes);
 

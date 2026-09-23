@@ -84,6 +84,7 @@ export type Database = {
           fee_percent: number | null;
           fee_amount: number | null;
           caregiver_net: number | null;
+          cancel_reason: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -98,6 +99,7 @@ export type Database = {
           fee_percent?: number | null;
           fee_amount?: number | null;
           caregiver_net?: number | null;
+          cancel_reason?: string | null;
           created_at?: string;
           updated_at?: string;
         };

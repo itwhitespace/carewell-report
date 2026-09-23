@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Download, Maximize, Minimize } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type {
+  CancellationStats,
   ChannelFunnelStat,
   ConversionStat,
   GrowthPoint,
@@ -13,6 +14,7 @@ import type {
   RankedItem,
   WeeklyConversionStat,
   WeeklyStat,
+  WonFinanceStats,
 } from "@/lib/report";
 import { conversionTierStyle, growthTierStyle, useChartPalette, type ChartPalette } from "@/lib/chart-theme";
 import { StatTile } from "./StatTile";
@@ -50,6 +52,8 @@ export type SlideDeckData = {
   accounts: AccountDetail[];
   positionStats: PositionMonthStats;
   notes: ReportNote[];
+  wonFinance: WonFinanceStats;
+  cancellation: CancellationStats;
 };
 
 const ACCOUNT_DIVIDER_LABEL: Record<LineOaRow["account"], string> = {
@@ -574,6 +578,297 @@ function PositionMonthSlide(stats: PositionMonthStats, palette: ChartPalette) {
   );
 }
 
+function WonFinanceSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
+  const columns: Column[] = [
+    {
+      key: "month",
+      label: (
+        <div>
+          เดือน
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(รอบปี 2569)</span>
+        </div>
+      ),
+    },
+    {
+      key: "wonCount",
+      label: (
+        <div>
+          ปิดการขายสำเร็จ
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Won Deals)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
+      key: "net",
+      label: (
+        <div>
+          ยอดสุทธิทั้งหมด
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Total Net)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
+      key: "fee",
+      label: (
+        <div>
+          ค่าดำเนินการ
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Company Fee)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
+      key: "caregiverNet",
+      label: (
+        <div>
+          ยอดที่ผู้ดูแลได้รับ
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Caregiver Net)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
+      key: "feePct",
+      label: (
+        <div>
+          สัดส่วนค่าดำเนินการ
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Fee %)</span>
+        </div>
+      ),
+      align: "right",
+    },
+  ];
+
+  const rows: Record<string, React.ReactNode>[] = wonFinance.monthly.map((m) => ({
+    month: shortMonthLabel(m.monthKey),
+    wonCount: (
+      <span style={{ color: palette.statusGood, fontWeight: 600 }}>
+        {m.wonCount} ราย
+      </span>
+    ),
+    net: (
+      <span className="font-mono font-semibold" style={{ color: palette.textPrimary }}>
+        {m.totalNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿
+      </span>
+    ),
+    fee: (
+      <span className="font-mono font-semibold text-amber-500">
+        {m.totalFee.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿
+      </span>
+    ),
+    caregiverNet: (
+      <span className="font-mono font-semibold text-emerald-400">
+        {m.totalCaregiverNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿
+      </span>
+    ),
+    feePct: (
+      <span className="font-mono font-medium text-neutral-300">
+        {fmtPct(m.effectiveFeePct, 2)}
+      </span>
+    ),
+  }));
+
+  if (wonFinance.monthly.length > 0) {
+    rows.push({
+      month: <b>ยอดรวมสะสม (Total)</b>,
+      wonCount: <b style={{ color: palette.statusGood }}>{wonFinance.grandWonCount} ราย</b>,
+      net: (
+        <b className="font-mono">
+          {wonFinance.grandTotalNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿
+        </b>
+      ),
+      fee: (
+        <b className="font-mono text-amber-500">
+          {wonFinance.grandTotalFee.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿
+        </b>
+      ),
+      caregiverNet: (
+        <b className="font-mono text-emerald-400">
+          {wonFinance.grandTotalCaregiverNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿
+        </b>
+      ),
+      feePct: (
+        <b className="font-mono">
+          {fmtPct(wonFinance.grandEffectiveFeePct, 2)}
+        </b>
+      ),
+    });
+  }
+
+  return (
+    <Slide
+      eyebrow="ผู้รับบริการ — ข้อมูลการเงิน"
+      title="ตารางข้อมูลการเงิน งานสถานะ Won รายเดือน"
+      subtitle="สรุปยอดสุทธิทั้งหมด, รายได้ค่าดำเนินการ, และยอดที่ผู้ดูแลได้รับ สำหรับงานที่ปิดการขายสำเร็จแยกรายเดือน"
+    >
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatTile
+          label="ยอดสุทธิสะสมทั้งหมด (Total Net)"
+          value={`${wonFinance.grandTotalNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`}
+          accent={palette.textPrimary}
+          glow="green"
+        />
+        <StatTile
+          label="ค่าดำเนินการสะสมรวม (Total Fee)"
+          value={`${wonFinance.grandTotalFee.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`}
+          accent="#F59E0B"
+          delta={wonFinance.grandEffectiveFeePct !== null ? `สัดส่วน ${fmtPct(wonFinance.grandEffectiveFeePct)} ของยอดสุทธิ` : null}
+          glow="orange"
+        />
+        <StatTile
+          label="ยอดจ่ายผู้ดูแลรวม (Caregiver Net)"
+          value={`${wonFinance.grandTotalCaregiverNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`}
+          accent={palette.statusGood}
+          glow="green"
+        />
+        <StatTile
+          label="ปิดการขายสำเร็จรวม (Won Deals)"
+          value={`${wonFinance.grandWonCount} ราย`}
+          accent={palette.accent}
+          glow="blue"
+        />
+      </div>
+
+      {wonFinance.monthly.length === 0 ? (
+        <div className="rounded-2xl border p-12 text-center text-sm" style={{ borderColor: palette.gridline, backgroundColor: palette.surface, color: palette.muted }}>
+          ยังไม่มีข้อมูลงานสถานะ Won ในระบบ
+        </div>
+      ) : (
+        <DataTable columns={columns} rows={rows} highlightLastRow={rows.length > 0} compact />
+      )}
+    </Slide>
+  );
+}
+
+function CancellationAnalysisSlide(cancellation: CancellationStats, palette: ChartPalette) {
+  return (
+    <Slide
+      eyebrow="ผู้รับบริการ — วิเคราะห์ปัญหาและแนวทางแก้ไข"
+      title="สรุปสถิติสาเหตุการยกเลิกงาน และแนวทางการป้องกัน"
+      subtitle="วิเคราะห์สัดส่วนสาเหตุการยกเลิกงานทั้งหมดที่บันทึก เพื่อกำหนดแนวทางปรับปรุงและลดอัตราการหลุดของลูกค้า"
+    >
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatTile
+          label="จำนวนงานที่ยกเลิกทั้งหมด"
+          value={`${cancellation.totalCancelled} ราย`}
+          accent={palette.statusCritical}
+          glow="red"
+        />
+        <StatTile
+          label="อัตราการยกเลิกงาน (Cancel Rate)"
+          value={fmtPct(cancellation.cancellationRatePct, 1)}
+          delta={cancellation.totalRecipients > 0 ? `จากเคสผู้รับบริการทั้งหมด ${cancellation.totalRecipients} ราย` : null}
+          accent={palette.statusCritical}
+          glow="red"
+        />
+        <StatTile
+          label="สาเหตุหลักที่พบบ่อยอันดับ 1"
+          value={cancellation.topReason ?? "ไม่มีข้อมูล"}
+          accent="#F59E0B"
+          glow="orange"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        {/* Left Column: Reasons Breakdown (5 cols) */}
+        <div
+          className="rounded-2xl border p-5 backdrop-blur-sm shadow-md lg:col-span-5"
+          style={{ borderColor: palette.gridline, backgroundColor: palette.surface }}
+        >
+          <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: palette.gridline }}>
+            <h3 className="text-sm font-bold" style={{ color: palette.textPrimary }}>
+              📊 สัดส่วนสาเหตุการยกเลิกงาน
+            </h3>
+            <span className="text-xs" style={{ color: palette.muted }}>
+              รวม {cancellation.totalCancelled} ราย
+            </span>
+          </div>
+
+          {cancellation.reasons.length === 0 ? (
+            <p className="mt-4 text-xs" style={{ color: palette.muted }}>
+              ยังไม่มีการบันทึกสาเหตุการยกเลิกงานในระบบ
+            </p>
+          ) : (
+            <div className="mt-4 space-y-3.5">
+              {cancellation.reasons.map((r, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium truncate max-w-[220px]" style={{ color: palette.textPrimary }} title={r.reason}>
+                      {i + 1}. {r.reason}
+                    </span>
+                    <span className="font-mono font-bold" style={{ color: palette.statusCritical }}>
+                      {r.count} ราย <span className="text-[11px] font-normal" style={{ color: palette.muted }}>({fmtPct(r.pct, 1)})</span>
+                    </span>
+                  </div>
+                  {/* Progress bar */}
+                  <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: `${palette.gridline}` }}>
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${Math.max(4, r.pct)}%`,
+                        backgroundColor: i === 0 ? palette.statusCritical : i === 1 ? "#F59E0B" : palette.accent,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right Column: Strategic Action Plans (7 cols) */}
+        <div
+          className="rounded-2xl border p-5 backdrop-blur-sm shadow-md lg:col-span-7 flex flex-col justify-between"
+          style={{ borderColor: palette.gridline, backgroundColor: palette.surface }}
+        >
+          <div className="pb-3 border-b" style={{ borderColor: palette.gridline }}>
+            <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: palette.textPrimary }}>
+              <span>💡</span>
+              <span>การวิเคราะห์เชิงลึกและแนวทางการแก้ปัญหา (Actionable Recommendations)</span>
+            </h3>
+          </div>
+
+          <div className="mt-3.5 space-y-3">
+            {cancellation.insights.map((ins, idx) => (
+              <div
+                key={idx}
+                className="rounded-xl border p-3 transition-colors hover:border-emerald-500/30"
+                style={{ borderColor: palette.gridline, backgroundColor: palette.pagePlane }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h4 className="text-xs font-bold" style={{ color: palette.statusGood }}>
+                    {idx + 1}. {ins.title}
+                  </h4>
+                  <span
+                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    style={{ backgroundColor: `${palette.accent}20`, color: palette.accent }}
+                  >
+                    {ins.category}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] leading-relaxed" style={{ color: palette.textSecondary }}>
+                  <span className="font-semibold text-neutral-400">ประเด็น:</span> {ins.description}
+                </p>
+                <p className="mt-1 text-[11px] font-medium leading-relaxed" style={{ color: palette.textPrimary }}>
+                  <span className="font-semibold text-emerald-400">แนวทางแก้ไข:</span> {ins.actionPlan}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Slide>
+  );
+}
+
 function ClosingNotesSlide(notes: ReportNote[], palette: ChartPalette) {
   const sortedNotes = [...notes].sort((a, b) => {
     const aIsNew = a.status === "ประเด็นใหม่" || a.status !== "ดำเนินการแล้ว";
@@ -714,7 +1009,11 @@ export function SlideDeck({ data }: { data: SlideDeckData }) {
       list.push(...AccountOverviewSlides(carewellteam, palette));
       list.push(<div key="position">{PositionMonthSlide(data.positionStats, palette)}</div>);
     }
-    if (carewell) list.push(...AccountOverviewSlides(carewell, palette));
+    if (carewell) {
+      list.push(...AccountOverviewSlides(carewell, palette));
+      list.push(<div key="won-finance">{WonFinanceSlide(data.wonFinance, palette)}</div>);
+      list.push(<div key="cancellation-analysis">{CancellationAnalysisSlide(data.cancellation, palette)}</div>);
+    }
 
     list.push(<div key="notes">{ClosingNotesSlide(data.notes, palette)}</div>);
 

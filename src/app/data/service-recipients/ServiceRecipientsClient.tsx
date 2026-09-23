@@ -28,6 +28,7 @@ export type ServiceRecipientRow = {
   fee_percent: number | null;
   fee_amount: number | null;
   caregiver_net: number | null;
+  cancel_reason: string | null;
 };
 
 // Helper: Format number with commas
@@ -63,6 +64,10 @@ export function ServiceRecipientsClient({
   // Payment Form State (for Won)
   const [netTotalStr, setNetTotalStr] = useState("");
   const [feeAmountStr, setFeeAmountStr] = useState("");
+
+  // Cancellation Reason State (for ยกเลิกงาน)
+  const [cancelReason, setCancelReason] = useState("");
+
   const [formError, setFormError] = useState<string | null>(null);
 
   // Confirmation Modal State
@@ -73,6 +78,7 @@ export function ServiceRecipientsClient({
 
   // Calculations for Won: ยอดที่ผู้ดูแลได้รับ = ยอดสุทธิทั้งหมด - ค่าดำเนินการ
   const isWon = status === "Won";
+  const isCancelled = status === "ยกเลิกงาน";
   const netTotal = parseNumberInput(netTotalStr);
   const feeAmount = parseNumberInput(feeAmountStr);
   const caregiverNet = isWon && netTotal > 0 ? Math.max(0, netTotal - feeAmount) : 0;
@@ -121,6 +127,13 @@ export function ServiceRecipientsClient({
       }
     }
 
+    if (isCancelled) {
+      if (!cancelReason.trim()) {
+        setFormError("กรุณาระบุสาเหตุการยกเลิกงานสำหรับการบันทึกสถานะยกเลิกงาน");
+        return;
+      }
+    }
+
     setIsConfirmOpen(true);
   };
 
@@ -142,6 +155,10 @@ export function ServiceRecipientsClient({
           formData.append("caregiver_net", String(caregiverNet));
         }
 
+        if (isCancelled) {
+          formData.append("cancel_reason", cancelReason.trim());
+        }
+
         await createServiceRecipient(formData);
 
         // Reset form
@@ -152,6 +169,7 @@ export function ServiceRecipientsClient({
         setStatus("");
         setNetTotalStr("");
         setFeeAmountStr("");
+        setCancelReason("");
         setFormError(null);
       } catch (err: unknown) {
         console.error("Create failed:", err);
@@ -242,6 +260,21 @@ export function ServiceRecipientsClient({
                     <span className="text-neutral-500">ยอดที่ผู้ดูแลได้รับ:</span>
                     <span className="font-bold text-emerald-600 dark:text-emerald-400">
                       {formatCurrency(caregiverNet)} ฿
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {isCancelled && (
+                <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-800 space-y-1.5">
+                  <div className="font-bold text-red-600 dark:text-red-400 flex items-center gap-1">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>ข้อมูลการยกเลิกงาน</span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-neutral-500 shrink-0">สาเหตุ:</span>
+                    <span className="font-semibold text-red-600 dark:text-red-400 text-right">
+                      {cancelReason || "-"}
                     </span>
                   </div>
                 </div>
@@ -437,6 +470,45 @@ export function ServiceRecipientsClient({
           </div>
         )}
 
+        {/* Conditional Cancellation Reason for "ยกเลิกงาน" */}
+        {isCancelled && (
+          <div className="rounded-2xl border border-red-200 bg-red-50/50 p-5 dark:border-red-900/50 dark:bg-red-950/20 space-y-4 animate-in fade-in duration-300">
+            <div className="flex items-center justify-between pb-3 border-b border-red-200/80 dark:border-red-900/60">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-600 text-white shadow-xs">
+                  <X className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                    ข้อมูลการยกเลิกงาน <span className="text-red-500 text-xs font-normal">(บังคับกรอกสำหรับสถานะยกเลิกงาน)</span>
+                  </h3>
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                    ระบุสาเหตุที่ลูกค้ายกเลิก เพื่อนำไปสรุปสถิติและวิเคราะห์แนวทางการแก้ไข
+                  </p>
+                </div>
+              </div>
+              <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-900/60 dark:text-red-300">
+                สถานะ: ยกเลิกงาน
+              </span>
+            </div>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1">
+                <span>สาเหตุ:</span>
+                <span className="text-red-500">*</span>
+              </span>
+              <input
+                type="text"
+                required
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="เช่น ลูกค้าหาผู้ดูแลได้เอง / ติดปัญหาเรื่องราคา / เลื่อนการรับบริการไม่มีกำหนด"
+                className="rounded-xl border border-neutral-300 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-red-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+              />
+            </label>
+          </div>
+        )}
+
         {/* Submit Button */}
         <div className="pt-2">
           <button
@@ -539,6 +611,11 @@ export function ServiceRecipientsClient({
 
                     <td className="px-4 py-3 whitespace-nowrap">
                       <StatusTag status={r.status} />
+                      {r.status === "ยกเลิกงาน" && r.cancel_reason && (
+                        <div className="mt-1 text-xs text-red-600 dark:text-red-400 font-normal max-w-[220px] truncate" title={r.cancel_reason}>
+                          <span className="font-semibold">สาเหตุ:</span> {r.cancel_reason}
+                        </div>
+                      )}
                     </td>
 
                     {/* Payment Info columns */}

@@ -7,7 +7,7 @@ async function getRows(): Promise<ServiceRecipientRow[]> {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("service_recipients")
-    .select("id, job_code, service_date, care_level, work_format, status, net_total, fee_percent, fee_amount, caregiver_net")
+    .select("id, job_code, service_date, care_level, work_format, status, net_total, fee_percent, fee_amount, caregiver_net, cancel_reason")
     .order("service_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
 

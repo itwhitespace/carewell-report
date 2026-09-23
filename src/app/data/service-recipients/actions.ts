@@ -20,11 +20,13 @@ export async function createServiceRecipient(formData: FormData) {
   const supabase = getSupabaseAdmin();
   const status = textOrNull(formData, "status");
   const isWon = status === "Won";
+  const isCancelled = status === "ยกเลิกงาน";
 
   const net_total = isWon ? numberOrNull(formData, "net_total") : null;
   const fee_percent = isWon ? numberOrNull(formData, "fee_percent") : null;
   const fee_amount = isWon ? numberOrNull(formData, "fee_amount") : null;
   const caregiver_net = isWon ? numberOrNull(formData, "caregiver_net") : null;
+  const cancel_reason = isCancelled ? textOrNull(formData, "cancel_reason") : null;
 
   const { error } = await supabase.from("service_recipients").insert({
     job_code: textOrNull(formData, "job_code"),
@@ -36,6 +38,7 @@ export async function createServiceRecipient(formData: FormData) {
     fee_percent,
     fee_amount,
     caregiver_net,
+    cancel_reason,
   });
 
   if (error) {
@@ -50,11 +53,13 @@ export async function updateServiceRecipient(id: string, formData: FormData) {
   const supabase = getSupabaseAdmin();
   const status = textOrNull(formData, "status");
   const isWon = status === "Won";
+  const isCancelled = status === "ยกเลิกงาน";
 
   const net_total = isWon ? numberOrNull(formData, "net_total") : null;
   const fee_percent = isWon ? numberOrNull(formData, "fee_percent") : null;
   const fee_amount = isWon ? numberOrNull(formData, "fee_amount") : null;
   const caregiver_net = isWon ? numberOrNull(formData, "caregiver_net") : null;
+  const cancel_reason = isCancelled ? textOrNull(formData, "cancel_reason") : null;
 
   const { error } = await supabase
     .from("service_recipients")
@@ -68,6 +73,7 @@ export async function updateServiceRecipient(id: string, formData: FormData) {
       fee_percent,
       fee_amount,
       caregiver_net,
+      cancel_reason,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);

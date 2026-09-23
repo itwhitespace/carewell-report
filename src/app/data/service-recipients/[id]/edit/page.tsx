@@ -14,7 +14,7 @@ export default async function EditServiceRecipientPage({
   const supabase = getSupabaseAdmin();
   const { data: row, error } = await supabase
     .from("service_recipients")
-    .select("id, job_code, service_date, care_level, work_format, status, net_total, fee_percent, fee_amount, caregiver_net")
+    .select("id, job_code, service_date, care_level, work_format, status, net_total, fee_percent, fee_amount, caregiver_net, cancel_reason")
     .eq("id", id)
     .single();
 
