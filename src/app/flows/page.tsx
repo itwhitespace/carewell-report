@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getSystemFlows } from "@/lib/flows";
 import { createFlowAction } from "./actions";
 import { DeleteFlowButton } from "./DeleteFlowButton";
-import { Plus, Search, Layers, GitMerge, FileText, ArrowRight } from "lucide-react";
+import { Plus, Search, Layers, GitMerge, FileText, ArrowRight, Eye } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -85,14 +85,23 @@ SUPABASE_SERVICE_ROLE_KEY=คีย์_service_role_จาก_supabase_dashboard
                   )}
                 </div>
 
-                <div className="mt-6 flex items-center justify-end gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                <div className="mt-6 flex items-center justify-end gap-2 sm:gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
                   <DeleteFlowButton flowId={flow.id} title={flow.title} />
+
+                  <Link
+                    href={`/flows/${flow.id}/view`}
+                    className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-900 transition-colors"
+                    title="เปิดหน้าอ่านอย่างเดียว"
+                  >
+                    <Eye className="h-3.5 w-3.5 text-blue-500" />
+                    <span>เปิดอ่าน</span>
+                  </Link>
 
                   <Link
                     href={`/flows/${flow.id}`}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-1.5 text-xs font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900 hover:bg-blue-600 dark:hover:bg-blue-500 dark:hover:text-white transition-colors"
                   >
-                    <span>ดูรายละเอียด Flow</span>
+                    <span>จัดการ Flow</span>
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>

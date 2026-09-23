@@ -13,9 +13,9 @@ const LINKS = [
 export function NavBar() {
   const pathname = usePathname();
 
-  // The presentation is a fullscreen, fullwidth, fixed-dark deck with its
-  // own minimal back-link — the site chrome would eat into the stage.
-  if (pathname === "/slides") return null;
+  // The presentation and view-only flow pages hide the site chrome/navbar
+  // to prevent unauthorized navigation and maintain a clean view experience.
+  if (pathname === "/slides" || pathname.endsWith("/view")) return null;
 
   return (
     <header className="border-b border-neutral-200 bg-white/80 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/80">

@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Edit2, Check } from "lucide-react";
+import { ArrowLeft, Edit2, Check, Share2 } from "lucide-react";
 import { FlowStepSidebar } from "@/components/flows/FlowStepSidebar";
 import { FlowEditor } from "@/components/flows/FlowEditor";
 import { UnsavedModal } from "@/components/flows/UnsavedModal";
+import { FlowShareModal } from "@/components/flows/FlowShareModal";
 import {
   createStepAction,
   deleteStepAction,
@@ -39,6 +40,7 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
   const [draftData, setDraftData] = useState<{ title: string; content: string } | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [isSavingUnsaved, setIsSavingUnsaved] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const selectedStep = steps.find((s) => s.id === selectedStepId) ?? steps[0] ?? null;
 
@@ -282,16 +284,35 @@ export function FlowDetailClient({ initialFlow }: { initialFlow: SystemFlow }) {
               )}
             </div>
 
-            <button
-              onClick={() => setIsEditingHeader(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-900 transition-colors"
-            >
-              <Edit2 className="h-3.5 w-3.5" />
-              <span>แก้ไขหัวข้อ Flow</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsShareModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors shadow-xs"
+                title="ออกลิงก์สำหรับแชร์ให้ผู้อื่นเปิดอ่าน"
+              >
+                <Share2 className="h-3.5 w-3.5" />
+                <span>แชร์ (Share)</span>
+              </button>
+
+              <button
+                onClick={() => setIsEditingHeader(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-900 transition-colors"
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+                <span>แก้ไขหัวข้อ Flow</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Share Modal */}
+      <FlowShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        flowId={flow.id}
+        flowTitle={flow.title}
+      />
 
       {/* Content Layout: Steps Sidebar + Main Editor */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
