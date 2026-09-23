@@ -44,6 +44,10 @@ create table if not exists public.service_recipients (
   care_level text,
   work_format text,
   status text,
+  net_total numeric,
+  fee_percent numeric,
+  fee_amount numeric,
+  caregiver_net numeric,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

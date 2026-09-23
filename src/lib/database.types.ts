@@ -80,6 +80,10 @@ export type Database = {
           care_level: string | null;
           work_format: string | null;
           status: string | null;
+          net_total: number | null;
+          fee_percent: number | null;
+          fee_amount: number | null;
+          caregiver_net: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -90,6 +94,10 @@ export type Database = {
           care_level?: string | null;
           work_format?: string | null;
           status?: string | null;
+          net_total?: number | null;
+          fee_percent?: number | null;
+          fee_amount?: number | null;
+          caregiver_net?: number | null;
           created_at?: string;
           updated_at?: string;
         };
