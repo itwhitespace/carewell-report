@@ -463,6 +463,83 @@ function wonFinanceSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
   );
 }
 
+function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addHeader(
+    slide,
+    "ผู้รับบริการ — รายละเอียดการเงิน",
+    "ตารางข้อมูลการเงิน งานสถานะ Won แบบแยกรายการ",
+    "แจกแจงรายละเอียดข้อมูลการเงินของงานที่ปิดการขายสำเร็จ (Won) ครบทุกรายการในระบบ"
+  );
+  addStatTiles(
+    slide,
+    [
+      {
+        label: "จำนวนงาน Won ทั้งหมด",
+        value: `${wonFinance.grandWonCount} รายการ`,
+        color: C.accent,
+      },
+      {
+        label: "ยอดสุทธิสะสมรวม (Total Net)",
+        value: `${Math.round(wonFinance.grandTotalNet).toLocaleString("th-TH")} ฿`,
+        color: C.textPrimary,
+      },
+      {
+        label: "ค่าดำเนินการสะสมรวม (Total Fee)",
+        value: `${Math.round(wonFinance.grandTotalFee).toLocaleString("th-TH")} ฿`,
+        color: C.statusWarning,
+      },
+      {
+        label: "ยอดจ่ายผู้ดูแลรวม (Caregiver Net)",
+        value: `${Math.round(wonFinance.grandTotalCaregiverNet).toLocaleString("th-TH")} ฿`,
+        color: C.statusGood,
+      },
+    ],
+    1.4
+  );
+
+  const rows: (string | number)[][] = (wonFinance.items ?? []).map((item, idx) => [
+    `${idx + 1}. ${item.jobCode}`,
+    item.serviceDateLabel,
+    item.careLevel,
+    item.workFormat,
+    `${Math.round(item.netTotal).toLocaleString("th-TH")} ฿`,
+    `${Math.round(item.feeAmount).toLocaleString("th-TH")} ฿`,
+    `${Math.round(item.caregiverNet).toLocaleString("th-TH")} ฿`,
+    item.feePercent !== null ? fmtPct(item.feePercent, 1) : "-",
+  ]);
+
+  if (wonFinance.items && wonFinance.items.length > 0) {
+    rows.push([
+      `รวม (${wonFinance.items.length} รายการ)`,
+      "-",
+      "-",
+      "-",
+      `${Math.round(wonFinance.grandTotalNet).toLocaleString("th-TH")} ฿`,
+      `${Math.round(wonFinance.grandTotalFee).toLocaleString("th-TH")} ฿`,
+      `${Math.round(wonFinance.grandTotalCaregiverNet).toLocaleString("th-TH")} ฿`,
+      fmtPct(wonFinance.grandEffectiveFeePct, 2),
+    ]);
+  }
+
+  addDataTable(
+    slide,
+    [
+      { label: "รหัสงาน", width: 1.5 },
+      { label: "วันที่", width: 1.1 },
+      { label: "ระดับ", width: 0.9 },
+      { label: "รูปแบบ", width: 1.0 },
+      { label: "ยอดสุทธิ", width: 1.3 },
+      { label: "ค่าดำเนินการ", width: 1.3 },
+      { label: "จ่ายผู้ดูแล", width: 1.3 },
+      { label: "สัดส่วน", width: 0.8 },
+    ],
+    rows,
+    { top: 3.1, highlightLastRow: (wonFinance.items?.length ?? 0) > 0 }
+  );
+}
+
 function cancellationSlide(pptx: PptxGenJS, cancellation: CancellationStats) {
   const slide = pptx.addSlide();
   addBackground(slide);
@@ -545,6 +622,7 @@ export async function buildPptx(data: SlideDeckData): Promise<Buffer> {
   if (carewell) {
     accountSlides(pptx, carewell);
     wonFinanceSlide(pptx, data.wonFinance);
+    wonFinanceDetailSlide(pptx, data.wonFinance);
     cancellationSlide(pptx, data.cancellation);
   }
 

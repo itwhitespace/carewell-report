@@ -643,8 +643,22 @@ export type WonFinanceMonthlyStat = {
   effectiveFeePct: number | null;
 };
 
+export type WonDealItem = {
+  id?: string;
+  jobCode: string;
+  serviceDate: string | null;
+  serviceDateLabel: string;
+  careLevel: string;
+  workFormat: string;
+  netTotal: number;
+  feeAmount: number;
+  caregiverNet: number;
+  feePercent: number | null;
+};
+
 export type WonFinanceStats = {
   monthly: WonFinanceMonthlyStat[];
+  items: WonDealItem[];
   grandWonCount: number;
   grandTotalNet: number;
   grandTotalFee: number;
@@ -652,7 +666,7 @@ export type WonFinanceStats = {
   grandEffectiveFeePct: number | null;
 };
 
-/** Financial breakdown of Won deals grouped by service month */
+/** Financial breakdown of Won deals grouped by service month and itemized */
 export function monthlyWonFinance(recipients: ServiceRecipientRow[]): WonFinanceStats {
   const byMonth = new Map<
     string,
@@ -664,11 +678,39 @@ export function monthlyWonFinance(recipients: ServiceRecipientRow[]): WonFinance
     }
   >();
 
+  const items: WonDealItem[] = [];
+
   for (const r of recipients) {
-    if (!r.service_date) continue;
     const st = (r.status ?? "").trim().toLowerCase();
     if (st !== "won") continue;
 
+    const net = Number(r.net_total) || 0;
+    const fee = Number(r.fee_amount) || 0;
+    const cg = Number(r.caregiver_net) || (net > 0 ? Math.max(0, net - fee) : 0);
+    const feePercent =
+      r.fee_percent !== null && r.fee_percent !== undefined
+        ? Number(r.fee_percent)
+        : net > 0
+          ? (fee / net) * 100
+          : null;
+
+    const dateStr = r.service_date ? r.service_date : null;
+    const dateLabel = dateStr ? shortDateTh(dateStr) : "-";
+
+    items.push({
+      id: r.id,
+      jobCode: r.job_code?.trim() || `งาน #${items.length + 1}`,
+      serviceDate: dateStr,
+      serviceDateLabel: dateLabel,
+      careLevel: r.care_level?.trim() || "-",
+      workFormat: r.work_format?.trim() || "-",
+      netTotal: net,
+      feeAmount: fee,
+      caregiverNet: cg,
+      feePercent,
+    });
+
+    if (!r.service_date) continue;
     const mk = monthKeyOf(r.service_date);
     const existing = byMonth.get(mk) ?? {
       wonCount: 0,
@@ -677,10 +719,6 @@ export function monthlyWonFinance(recipients: ServiceRecipientRow[]): WonFinance
       totalCaregiverNet: 0,
     };
 
-    const net = Number(r.net_total) || 0;
-    const fee = Number(r.fee_amount) || 0;
-    const cg = Number(r.caregiver_net) || (net > 0 ? Math.max(0, net - fee) : 0);
-
     existing.wonCount += 1;
     existing.totalNet += net;
     existing.totalFee += fee;
@@ -688,6 +726,14 @@ export function monthlyWonFinance(recipients: ServiceRecipientRow[]): WonFinance
 
     byMonth.set(mk, existing);
   }
+
+  // Sort items by serviceDate ascending
+  items.sort((a, b) => {
+    if (a.serviceDate && b.serviceDate) return a.serviceDate.localeCompare(b.serviceDate);
+    if (a.serviceDate) return -1;
+    if (b.serviceDate) return 1;
+    return 0;
+  });
 
   const sortedMonths = [...byMonth.keys()].sort();
   const monthly: WonFinanceMonthlyStat[] = sortedMonths.map((mk) => {
@@ -705,15 +751,16 @@ export function monthlyWonFinance(recipients: ServiceRecipientRow[]): WonFinance
     };
   });
 
-  const grandWonCount = monthly.reduce((s, m) => s + m.wonCount, 0);
-  const grandTotalNet = monthly.reduce((s, m) => s + m.totalNet, 0);
-  const grandTotalFee = monthly.reduce((s, m) => s + m.totalFee, 0);
-  const grandTotalCaregiverNet = monthly.reduce((s, m) => s + m.totalCaregiverNet, 0);
+  const grandWonCount = items.length;
+  const grandTotalNet = items.reduce((s, item) => s + item.netTotal, 0);
+  const grandTotalFee = items.reduce((s, item) => s + item.feeAmount, 0);
+  const grandTotalCaregiverNet = items.reduce((s, item) => s + item.caregiverNet, 0);
   const grandEffectiveFeePct =
     grandTotalNet > 0 ? (grandTotalFee / grandTotalNet) * 100 : null;
 
   return {
     monthly,
+    items,
     grandWonCount,
     grandTotalNet,
     grandTotalFee,

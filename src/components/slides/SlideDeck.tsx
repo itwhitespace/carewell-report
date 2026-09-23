@@ -748,6 +748,179 @@ function WonFinanceSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
   );
 }
 
+function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
+  const columns: Column[] = [
+    { key: "no", label: "ลำดับ / รหัสงาน", align: "left" },
+    { key: "date", label: "วันที่เริ่มงาน", align: "left" },
+    { key: "careLevel", label: "ระดับการดูแล", align: "left" },
+    { key: "workFormat", label: "รูปแบบงาน", align: "left" },
+    {
+      key: "net",
+      label: (
+        <div>
+          ยอดสุทธิทั้งหมด
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Total Net)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
+      key: "fee",
+      label: (
+        <div>
+          ค่าดำเนินการ
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Company Fee)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
+      key: "caregiverNet",
+      label: (
+        <div>
+          ยอดที่ผู้ดูแลได้รับ
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Caregiver Net)</span>
+        </div>
+      ),
+      align: "right",
+    },
+    {
+      key: "feePct",
+      label: (
+        <div>
+          สัดส่วน
+          <br />
+          <span className="text-[10px] font-normal opacity-85">(Fee %)</span>
+        </div>
+      ),
+      align: "right",
+    },
+  ];
+
+  const rows: Record<string, React.ReactNode>[] = (wonFinance.items ?? []).map((item, idx) => ({
+    no: (
+      <div className="flex items-center gap-2">
+        <span
+          className="inline-flex h-5 w-5 items-center justify-center rounded-md text-[11px] font-bold"
+          style={{ backgroundColor: `${palette.accent}22`, color: palette.accent }}
+        >
+          {idx + 1}
+        </span>
+        <span className="font-semibold" style={{ color: palette.textPrimary }}>
+          {item.jobCode}
+        </span>
+      </div>
+    ),
+    date: <span className="font-medium text-xs" style={{ color: palette.textSecondary }}>{item.serviceDateLabel}</span>,
+    careLevel: (
+      <span className="rounded px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: `${palette.surface}`, border: `1px solid ${palette.gridline}` }}>
+        {item.careLevel}
+      </span>
+    ),
+    workFormat: (
+      <span className="rounded px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: `${palette.surface}`, border: `1px solid ${palette.gridline}` }}>
+        {item.workFormat}
+      </span>
+    ),
+    net: (
+      <span className="font-mono font-semibold" style={{ color: palette.textPrimary }}>
+        {Math.round(item.netTotal).toLocaleString("th-TH")} ฿
+      </span>
+    ),
+    fee: (
+      <span className="font-mono font-semibold text-amber-500">
+        {Math.round(item.feeAmount).toLocaleString("th-TH")} ฿
+      </span>
+    ),
+    caregiverNet: (
+      <span className="font-mono font-semibold text-emerald-400">
+        {Math.round(item.caregiverNet).toLocaleString("th-TH")} ฿
+      </span>
+    ),
+    feePct: (
+      <span className="font-mono font-medium text-neutral-300">
+        {item.feePercent !== null ? fmtPct(item.feePercent, 1) : "-"}
+      </span>
+    ),
+  }));
+
+  if (wonFinance.items && wonFinance.items.length > 0) {
+    rows.push({
+      no: <span className="font-bold text-white">ยอดรวมสะสม ({wonFinance.items.length} รายการ)</span>,
+      date: "-",
+      careLevel: "-",
+      workFormat: "-",
+      net: (
+        <span className="font-mono font-bold text-white">
+          {Math.round(wonFinance.grandTotalNet).toLocaleString("th-TH")} ฿
+        </span>
+      ),
+      fee: (
+        <span className="font-mono font-bold text-amber-300">
+          {Math.round(wonFinance.grandTotalFee).toLocaleString("th-TH")} ฿
+        </span>
+      ),
+      caregiverNet: (
+        <span className="font-mono font-bold text-emerald-300">
+          {Math.round(wonFinance.grandTotalCaregiverNet).toLocaleString("th-TH")} ฿
+        </span>
+      ),
+      feePct: (
+        <span className="font-mono font-bold text-white">
+          {fmtPct(wonFinance.grandEffectiveFeePct, 2)}
+        </span>
+      ),
+    });
+  }
+
+  return (
+    <Slide
+      eyebrow="ผู้รับบริการ — รายละเอียดการเงิน"
+      title="ตารางข้อมูลการเงิน งานสถานะ Won แบบแยกรายการ"
+      subtitle="แจกแจงรายละเอียดข้อมูลการเงินของงานที่ปิดการขายสำเร็จ (Won) ครบทุกรายการในระบบ"
+    >
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatTile
+          label="จำนวนงาน Won ทั้งหมด"
+          value={`${wonFinance.grandWonCount} รายการ`}
+          accent={palette.accent}
+          glow="blue"
+        />
+        <StatTile
+          label="ยอดสุทธิสะสมรวม (Total Net)"
+          value={`${Math.round(wonFinance.grandTotalNet).toLocaleString("th-TH")} ฿`}
+          accent={palette.textPrimary}
+          glow="green"
+        />
+        <StatTile
+          label="ค่าดำเนินการสะสมรวม (Total Fee)"
+          value={`${Math.round(wonFinance.grandTotalFee).toLocaleString("th-TH")} ฿`}
+          accent="#F59E0B"
+          delta={wonFinance.grandEffectiveFeePct !== null ? `สัดส่วน ${fmtPct(wonFinance.grandEffectiveFeePct)} ของยอดสุทธิ` : null}
+          glow="orange"
+        />
+        <StatTile
+          label="ยอดจ่ายผู้ดูแลรวม (Caregiver Net)"
+          value={`${Math.round(wonFinance.grandTotalCaregiverNet).toLocaleString("th-TH")} ฿`}
+          accent={palette.statusGood}
+          glow="green"
+        />
+      </div>
+
+      {!wonFinance.items || wonFinance.items.length === 0 ? (
+        <div className="rounded-2xl border p-12 text-center text-sm" style={{ borderColor: palette.gridline, backgroundColor: palette.surface, color: palette.muted }}>
+          ยังไม่มีข้อมูลงานสถานะ Won ในระบบ
+        </div>
+      ) : (
+        <DataTable columns={columns} rows={rows} highlightLastRow={rows.length > 0} compact />
+      )}
+    </Slide>
+  );
+}
+
 function CancellationAnalysisSlide(cancellation: CancellationStats, palette: ChartPalette) {
   const cancelColumns: Column[] = [
     { key: "rank", label: "อันดับ", align: "center" },
@@ -994,6 +1167,7 @@ export function SlideDeck({ data }: { data: SlideDeckData }) {
     if (carewell) {
       list.push(...AccountOverviewSlides(carewell, palette));
       list.push(<div key="won-finance">{WonFinanceSlide(data.wonFinance, palette)}</div>);
+      list.push(<div key="won-finance-detail">{WonFinanceDetailSlide(data.wonFinance, palette)}</div>);
       list.push(<div key="cancellation-analysis">{CancellationAnalysisSlide(data.cancellation, palette)}</div>);
     }
 
