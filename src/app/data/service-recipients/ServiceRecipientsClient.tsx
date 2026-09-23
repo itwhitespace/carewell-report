@@ -62,7 +62,7 @@ export function ServiceRecipientsClient({
 
   // Payment Form State (for Won)
   const [netTotalStr, setNetTotalStr] = useState("");
-  const [feePercentStr, setFeePercentStr] = useState("10"); // default 10%
+  const [feeAmountStr, setFeeAmountStr] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
   // Confirmation Modal State
@@ -71,12 +71,11 @@ export function ServiceRecipientsClient({
   // Table Filter State
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("ทั้งหมด");
 
-  // Calculations for Won
+  // Calculations for Won: ยอดที่ผู้ดูแลได้รับ = ยอดสุทธิทั้งหมด - ค่าดำเนินการ
   const isWon = status === "Won";
   const netTotal = parseNumberInput(netTotalStr);
-  const feePercent = parseNumberInput(feePercentStr);
-  const feeAmount = isWon && netTotal > 0 && feePercent > 0 ? (netTotal * feePercent) / 100 : 0;
-  const caregiverNet = isWon && netTotal > 0 ? netTotal - feeAmount : 0;
+  const feeAmount = parseNumberInput(feeAmountStr);
+  const caregiverNet = isWon && netTotal > 0 ? Math.max(0, netTotal - feeAmount) : 0;
 
   // Formatting netTotal on blur
   const handleNetTotalBlur = () => {
@@ -88,9 +87,22 @@ export function ServiceRecipientsClient({
   };
 
   const handleNetTotalFocus = () => {
-    // Keep numbers only for editing
     const raw = netTotalStr.replace(/,/g, "");
     setNetTotalStr(raw);
+  };
+
+  // Formatting feeAmount on blur
+  const handleFeeAmountBlur = () => {
+    if (!feeAmountStr.trim()) return;
+    const num = parseNumberInput(feeAmountStr);
+    if (!isNaN(num) && num >= 0) {
+      setFeeAmountStr(num.toLocaleString("th-TH"));
+    }
+  };
+
+  const handleFeeAmountFocus = () => {
+    const raw = feeAmountStr.replace(/,/g, "");
+    setFeeAmountStr(raw);
   };
 
   // Pre-submit validation and opening Confirm Modal
@@ -103,8 +115,8 @@ export function ServiceRecipientsClient({
         setFormError("กรุณากรอกยอดสุทธิทั้งหมดสำหรับการปิดการขาย (Won)");
         return;
       }
-      if (!feePercentStr.trim() || feePercent < 0) {
-        setFormError("กรุณากรอกค่าดำเนินการ % ให้ถูกต้อง");
+      if (!feeAmountStr.trim() || feeAmount < 0) {
+        setFormError("กรุณากรอกค่าดำเนินการให้ถูกต้อง");
         return;
       }
     }
@@ -126,7 +138,6 @@ export function ServiceRecipientsClient({
 
         if (isWon) {
           formData.append("net_total", String(netTotal));
-          formData.append("fee_percent", String(feePercent));
           formData.append("fee_amount", String(feeAmount));
           formData.append("caregiver_net", String(caregiverNet));
         }
@@ -140,7 +151,7 @@ export function ServiceRecipientsClient({
         setWorkFormat("");
         setStatus("");
         setNetTotalStr("");
-        setFeePercentStr("10");
+        setFeeAmountStr("");
         setFormError(null);
       } catch (err: unknown) {
         console.error("Create failed:", err);
@@ -222,7 +233,7 @@ export function ServiceRecipientsClient({
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-neutral-500">ค่าดำเนินการ ({feePercent}%):</span>
+                    <span className="text-neutral-500">ค่าดำเนินการ:</span>
                     <span className="font-semibold text-amber-600 dark:text-amber-400">
                       {formatCurrency(feeAmount)} ฿
                     </span>
@@ -365,7 +376,7 @@ export function ServiceRecipientsClient({
                     ข้อมูลการชำระเงิน <span className="text-red-500 text-xs font-normal">(บังคับกรอกสำหรับสถานะ Won)</span>
                   </h3>
                   <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                    ระบุยอดสุทธิและ % ค่าดำเนินการ ระบบจะคำนวณค่าดำเนินการและยอดที่ผู้ดูแลได้รับให้อัตโนมัติ
+                    ระบุยอดสุทธิและค่าดำเนินการ ระบบจะคำนวณยอดที่ผู้ดูแลได้รับให้อัตโนมัติ
                   </p>
                 </div>
               </div>
@@ -388,54 +399,38 @@ export function ServiceRecipientsClient({
                   onChange={(e) => setNetTotalStr(e.target.value)}
                   onBlur={handleNetTotalBlur}
                   onFocus={handleNetTotalFocus}
-                  placeholder="เช่น 15,000"
+                  placeholder="เช่น 1,200"
                   className="rounded-xl border border-neutral-300 bg-white px-3.5 py-2 font-mono text-sm font-semibold text-neutral-900 focus:border-emerald-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
                 />
               </label>
 
-              {/* 2. ค่าดำเนินการ % */}
+              {/* 2. ค่าดำเนินการ */}
               <label className="flex flex-col gap-1 text-sm">
                 <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1">
-                  <span>2. ค่าดำเนินการ %</span>
+                  <span>2. ค่าดำเนินการ (บาท)</span>
                   <span className="text-red-500">*</span>
                 </span>
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="100"
-                    required
-                    value={feePercentStr}
-                    onChange={(e) => setFeePercentStr(e.target.value)}
-                    placeholder="เช่น 10"
-                    className="w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2 font-mono text-sm font-semibold text-neutral-900 focus:border-emerald-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 pr-8"
-                  />
-                  <span className="absolute right-3 top-2.5 text-xs font-bold text-neutral-400">%</span>
-                </div>
+                <input
+                  type="text"
+                  required
+                  value={feeAmountStr}
+                  onChange={(e) => setFeeAmountStr(e.target.value)}
+                  onBlur={handleFeeAmountBlur}
+                  onFocus={handleFeeAmountFocus}
+                  placeholder="เช่น 346.80"
+                  className="rounded-xl border border-neutral-300 bg-white px-3.5 py-2 font-mono text-sm font-semibold text-neutral-900 focus:border-emerald-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+                />
               </label>
 
-              {/* 3. ค่าดำเนินการ (คำนวณอัตโนมัติ) */}
-              <div className="flex flex-col gap-1 text-sm">
-                <span className="font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
-                  <Calculator className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>3. ค่าดำเนินการ (คำนวณอัตโนมัติ)</span>
-                </span>
-                <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2 font-mono text-sm font-bold text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
-                  <span>{formatCurrency(feeAmount)}</span>
-                  <span className="text-xs font-normal text-amber-700 dark:text-amber-400">บาท ({feePercent || 0}%)</span>
-                </div>
-              </div>
-
-              {/* 4. ยอดที่ผู้ดูแลที่รับ (คำนวณอัตโนมัติ) */}
-              <div className="flex flex-col gap-1 text-sm">
+              {/* 3. ยอดที่ผู้ดูแลได้รับ (คำนวณอัตโนมัติ) */}
+              <div className="flex flex-col gap-1 text-sm sm:col-span-2">
                 <span className="font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
                   <UserCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>4. ยอดที่ผู้ดูแลที่รับ (คำนวณอัตโนมัติ)</span>
+                  <span>3. ยอดที่ผู้ดูแลได้รับ (คำนวณอัตโนมัติ)</span>
                 </span>
-                <div className="flex items-center justify-between rounded-xl border border-emerald-300 bg-emerald-100/70 px-3.5 py-2 font-mono text-sm font-bold text-emerald-950 dark:border-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-100">
+                <div className="flex items-center justify-between rounded-xl border border-emerald-300 bg-emerald-100/70 px-4 py-2.5 font-mono text-sm font-bold text-emerald-950 dark:border-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-100">
                   <span>{formatCurrency(caregiverNet)}</span>
-                  <span className="text-xs font-normal text-emerald-800 dark:text-emerald-300">บาท (สุทธิ)</span>
+                  <span className="text-xs font-normal text-emerald-800 dark:text-emerald-300">บาท (ยอดสุทธิทั้งหมด − ค่าดำเนินการ)</span>
                 </div>
               </div>
             </div>
