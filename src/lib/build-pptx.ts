@@ -406,17 +406,17 @@ function wonFinanceSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
     [
       {
         label: "ยอดสุทธิสะสมทั้งหมด (Total Net)",
-        value: `${wonFinance.grandTotalNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+        value: `${Math.round(wonFinance.grandTotalNet).toLocaleString("th-TH")} ฿`,
         color: C.textPrimary,
       },
       {
         label: "ค่าดำเนินการสะสมรวม (Total Fee)",
-        value: `${wonFinance.grandTotalFee.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+        value: `${Math.round(wonFinance.grandTotalFee).toLocaleString("th-TH")} ฿`,
         color: C.statusWarning,
       },
       {
         label: "ยอดจ่ายผู้ดูแลรวม (Caregiver Net)",
-        value: `${wonFinance.grandTotalCaregiverNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+        value: `${Math.round(wonFinance.grandTotalCaregiverNet).toLocaleString("th-TH")} ฿`,
         color: C.statusGood,
       },
       {
@@ -431,9 +431,9 @@ function wonFinanceSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
   const rows: (string | number)[][] = wonFinance.monthly.map((m) => [
     shortMonthLabel(m.monthKey),
     `${m.wonCount} ราย`,
-    `${m.totalNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
-    `${m.totalFee.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
-    `${m.totalCaregiverNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+    `${Math.round(m.totalNet).toLocaleString("th-TH")} ฿`,
+    `${Math.round(m.totalFee).toLocaleString("th-TH")} ฿`,
+    `${Math.round(m.totalCaregiverNet).toLocaleString("th-TH")} ฿`,
     fmtPct(m.effectiveFeePct, 2),
   ]);
 
@@ -441,9 +441,9 @@ function wonFinanceSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
     rows.push([
       "ยอดรวมสะสม (Total)",
       `${wonFinance.grandWonCount} ราย`,
-      `${wonFinance.grandTotalNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
-      `${wonFinance.grandTotalFee.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
-      `${wonFinance.grandTotalCaregiverNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`,
+      `${Math.round(wonFinance.grandTotalNet).toLocaleString("th-TH")} ฿`,
+      `${Math.round(wonFinance.grandTotalFee).toLocaleString("th-TH")} ฿`,
+      `${Math.round(wonFinance.grandTotalCaregiverNet).toLocaleString("th-TH")} ฿`,
       fmtPct(wonFinance.grandEffectiveFeePct, 2),
     ]);
   }
@@ -470,7 +470,7 @@ function cancellationSlide(pptx: PptxGenJS, cancellation: CancellationStats) {
     slide,
     "ผู้รับบริการ — สถิติการยกเลิกงาน",
     "สรุปสถิติสาเหตุการยกเลิกงานทั้งหมด",
-    "วิเคราะห์สัดส่วนสาเหตุการยกเลิกงานทั้งหมดที่บันทึก เพื่อกำหนดแนวทางปรับปรุงและลดอัตราการหลุดของลูกค้า"
+    "วิเคราะห์สัดส่วนสาเหตุการยกเลิกงานทั้งหมดที่บันทึก เพื่อดูสถิติและสัดส่วนของปัญหาที่พบบ่อย"
   );
   addStatTiles(
     slide,
@@ -483,47 +483,31 @@ function cancellationSlide(pptx: PptxGenJS, cancellation: CancellationStats) {
   );
 
   const rows: (string | number)[][] = cancellation.reasons.map((r, i) => [
-    `${i + 1}. ${r.reason}`,
+    `${i + 1}`,
+    r.reason,
     `${r.count} ราย`,
     fmtPct(r.pct, 1),
   ]);
 
+  if (cancellation.reasons.length > 0) {
+    rows.push([
+      "-",
+      "รวมงานที่ยกเลิกทั้งหมด (Total)",
+      `${cancellation.totalCancelled} ราย`,
+      "100.0%",
+    ]);
+  }
+
   addDataTable(
     slide,
     [
-      { label: "สาเหตุการยกเลิกงาน", width: 5.0 },
-      { label: "จำนวน", width: 2.0 },
-      { label: "สัดส่วน (%)", width: 2.0 },
+      { label: "อันดับ", width: 1.0 },
+      { label: "สาเหตุการยกเลิกงาน", width: 4.8 },
+      { label: "จำนวนงานที่ยกเลิก", width: 1.8 },
+      { label: "สัดส่วน (%)", width: 1.4 },
     ],
     rows,
-    { top: 3.1 }
-  );
-
-  // Additional slide for Actionable Strategies
-  const actionSlide = pptx.addSlide();
-  addBackground(actionSlide);
-  addHeader(
-    actionSlide,
-    "ผู้รับบริการ — วิเคราะห์ปัญหาและแนวทางแก้ไข",
-    "วิเคราะห์กลุ่มปัญหาและแนวทางแก้ไขเชิงรุก",
-    "วิเคราะห์เจาะลึกจาก 4 กลุ่มสาเหตุจริง เพื่อกำหนดมาตรการป้องกันการสูญเสียลูกค้า"
-  );
-
-  const actionRows: (string | number)[][] = cancellation.insights.map((ins, idx) => [
-    `${idx + 1}. ${ins.title} (${ins.count} ราย / ${fmtPct(ins.pct, 1)})`,
-    ins.sourceReasons,
-    ins.actionPlan,
-  ]);
-
-  addDataTable(
-    actionSlide,
-    [
-      { label: "กลุ่มปัญหาหลัก & สัดส่วน", width: 2.8 },
-      { label: "สาเหตุที่พบจริงในระบบ", width: 2.8 },
-      { label: "แนวทางแก้ไขและป้องกัน", width: 3.4 },
-    ],
-    actionRows,
-    { top: 1.6 }
+    { top: 3.1, highlightLastRow: cancellation.reasons.length > 0 }
   );
 }
 

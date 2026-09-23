@@ -656,17 +656,17 @@ function WonFinanceSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
     ),
     net: (
       <span className="font-mono font-semibold" style={{ color: palette.textPrimary }}>
-        {m.totalNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿
+        {Math.round(m.totalNet).toLocaleString("th-TH")} ฿
       </span>
     ),
     fee: (
       <span className="font-mono font-semibold text-amber-500">
-        {m.totalFee.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿
+        {Math.round(m.totalFee).toLocaleString("th-TH")} ฿
       </span>
     ),
     caregiverNet: (
       <span className="font-mono font-semibold text-emerald-400">
-        {m.totalCaregiverNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿
+        {Math.round(m.totalCaregiverNet).toLocaleString("th-TH")} ฿
       </span>
     ),
     feePct: (
@@ -678,27 +678,27 @@ function WonFinanceSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
 
   if (wonFinance.monthly.length > 0) {
     rows.push({
-      month: <b>ยอดรวมสะสม (Total)</b>,
-      wonCount: <b style={{ color: palette.statusGood }}>{wonFinance.grandWonCount} ราย</b>,
+      month: <span className="font-bold text-white">ยอดรวมสะสม (Total)</span>,
+      wonCount: <span className="font-bold text-emerald-300">{wonFinance.grandWonCount} ราย</span>,
       net: (
-        <b className="font-mono">
-          {wonFinance.grandTotalNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿
-        </b>
+        <span className="font-mono font-bold text-white">
+          {Math.round(wonFinance.grandTotalNet).toLocaleString("th-TH")} ฿
+        </span>
       ),
       fee: (
-        <b className="font-mono text-amber-500">
-          {wonFinance.grandTotalFee.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿
-        </b>
+        <span className="font-mono font-bold text-amber-300">
+          {Math.round(wonFinance.grandTotalFee).toLocaleString("th-TH")} ฿
+        </span>
       ),
       caregiverNet: (
-        <b className="font-mono text-emerald-400">
-          {wonFinance.grandTotalCaregiverNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿
-        </b>
+        <span className="font-mono font-bold text-emerald-300">
+          {Math.round(wonFinance.grandTotalCaregiverNet).toLocaleString("th-TH")} ฿
+        </span>
       ),
       feePct: (
-        <b className="font-mono">
+        <span className="font-mono font-bold text-white">
           {fmtPct(wonFinance.grandEffectiveFeePct, 2)}
-        </b>
+        </span>
       ),
     });
   }
@@ -712,20 +712,20 @@ function WonFinanceSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
           label="ยอดสุทธิสะสมทั้งหมด (Total Net)"
-          value={`${wonFinance.grandTotalNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`}
+          value={`${Math.round(wonFinance.grandTotalNet).toLocaleString("th-TH")} ฿`}
           accent={palette.textPrimary}
           glow="green"
         />
         <StatTile
           label="ค่าดำเนินการสะสมรวม (Total Fee)"
-          value={`${wonFinance.grandTotalFee.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`}
+          value={`${Math.round(wonFinance.grandTotalFee).toLocaleString("th-TH")} ฿`}
           accent="#F59E0B"
           delta={wonFinance.grandEffectiveFeePct !== null ? `สัดส่วน ${fmtPct(wonFinance.grandEffectiveFeePct)} ของยอดสุทธิ` : null}
           glow="orange"
         />
         <StatTile
           label="ยอดจ่ายผู้ดูแลรวม (Caregiver Net)"
-          value={`${wonFinance.grandTotalCaregiverNet.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿`}
+          value={`${Math.round(wonFinance.grandTotalCaregiverNet).toLocaleString("th-TH")} ฿`}
           accent={palette.statusGood}
           glow="green"
         />
@@ -749,13 +749,73 @@ function WonFinanceSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
 }
 
 function CancellationAnalysisSlide(cancellation: CancellationStats, palette: ChartPalette) {
+  const cancelColumns: Column[] = [
+    { key: "rank", label: "อันดับ", align: "center" },
+    { key: "reason", label: "สาเหตุการยกเลิกงาน (Cancellation Reason)" },
+    { key: "count", label: "จำนวนงานที่ยกเลิก", align: "right" },
+    { key: "pct", label: "สัดส่วน (%)", align: "right" },
+    { key: "bar", label: "แผนภูมิสัดส่วนเปรียบเทียบ" },
+  ];
+
+  const cancelRows: Record<string, React.ReactNode>[] = cancellation.reasons.map((r, i) => ({
+    rank: (
+      <span
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold"
+        style={{
+          backgroundColor: i === 0 ? "rgba(239, 68, 68, 0.2)" : i === 1 ? "rgba(245, 158, 11, 0.2)" : `${palette.accent}22`,
+          color: i === 0 ? palette.statusCritical : i === 1 ? "#F59E0B" : palette.accent,
+        }}
+      >
+        {i + 1}
+      </span>
+    ),
+    reason: (
+      <span className="font-medium" style={{ color: palette.textPrimary }}>
+        {r.reason}
+      </span>
+    ),
+    count: (
+      <span className="font-mono font-bold" style={{ color: palette.statusCritical }}>
+        {r.count} ราย
+      </span>
+    ),
+    pct: (
+      <span className="font-mono font-semibold" style={{ color: palette.textPrimary }}>
+        {fmtPct(r.pct, 1)}
+      </span>
+    ),
+    bar: (
+      <div className="flex items-center gap-2 min-w-[120px] max-w-[240px]">
+        <div className="h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: palette.gridline }}>
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{
+              width: `${Math.max(4, r.pct)}%`,
+              backgroundColor: i === 0 ? palette.statusCritical : i === 1 ? "#F59E0B" : palette.accent,
+            }}
+          />
+        </div>
+      </div>
+    ),
+  }));
+
+  if (cancellation.reasons.length > 0) {
+    cancelRows.push({
+      rank: "-",
+      reason: <span className="font-bold text-white">รวมงานที่ยกเลิกทั้งหมด (Total)</span>,
+      count: <span className="font-mono font-bold text-red-400">{cancellation.totalCancelled} ราย</span>,
+      pct: <span className="font-mono font-bold text-white">100.0%</span>,
+      bar: "-",
+    });
+  }
+
   return (
     <Slide
-      eyebrow="ผู้รับบริการ — วิเคราะห์ปัญหาและแนวทางแก้ไข"
-      title="สรุปสถิติสาเหตุการยกเลิกงาน และแนวทางการป้องกัน"
-      subtitle="วิเคราะห์สัดส่วนสาเหตุการยกเลิกงานทั้งหมดที่บันทึก เพื่อกำหนดแนวทางปรับปรุงและลดอัตราการหลุดของลูกค้า"
+      eyebrow="ผู้รับบริการ — สถิติการยกเลิกงาน"
+      title="สรุปสถิติสาเหตุการยกเลิกงานทั้งหมด"
+      subtitle="วิเคราะห์สัดส่วนสาเหตุการยกเลิกงานทั้งหมดที่บันทึก เพื่อดูสถิติและสัดส่วนของปัญหาที่พบบ่อย"
     >
-      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile
           label="จำนวนงานที่ยกเลิกทั้งหมด"
           value={`${cancellation.totalCancelled} ราย`}
@@ -777,113 +837,16 @@ function CancellationAnalysisSlide(cancellation: CancellationStats, palette: Cha
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-        {/* Left Column: Reasons Breakdown (5 cols) */}
+      {cancellation.reasons.length === 0 ? (
         <div
-          className="rounded-2xl border p-4 backdrop-blur-sm shadow-md lg:col-span-5 flex flex-col justify-between"
-          style={{ borderColor: palette.gridline, backgroundColor: palette.surface }}
+          className="rounded-2xl border p-12 text-center text-sm"
+          style={{ borderColor: palette.gridline, backgroundColor: palette.surface, color: palette.muted }}
         >
-          <div className="flex items-center justify-between pb-2.5 border-b" style={{ borderColor: palette.gridline }}>
-            <h3 className="text-xs sm:text-sm font-bold flex items-center gap-1.5" style={{ color: palette.textPrimary }}>
-              <span>📊</span>
-              <span>สัดส่วนสาเหตุการยกเลิกงาน</span>
-            </h3>
-            <span className="text-[11px] font-medium" style={{ color: palette.muted }}>
-              บันทึกทั้งหมด {cancellation.totalCancelled} ราย
-            </span>
-          </div>
-
-          {cancellation.reasons.length === 0 ? (
-            <p className="py-8 text-center text-xs" style={{ color: palette.muted }}>
-              ยังไม่มีการบันทึกสาเหตุการยกเลิกงานในระบบ
-            </p>
-          ) : (
-            <div className="mt-3 max-h-[360px] overflow-y-auto pr-1.5 space-y-2.5 custom-scrollbar">
-              {cancellation.reasons.map((r, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl border p-2.5 transition-all hover:border-neutral-700"
-                  style={{ borderColor: palette.gridline, backgroundColor: palette.pagePlane }}
-                >
-                  <div className="flex items-start justify-between gap-2 text-xs">
-                    <span className="font-medium text-[11px] leading-tight flex-1" style={{ color: palette.textPrimary }}>
-                      <span className="font-bold text-neutral-400 mr-1">{i + 1}.</span>
-                      {r.reason}
-                    </span>
-                    <span className="font-mono font-bold text-[11px] shrink-0 text-right" style={{ color: palette.statusCritical }}>
-                      {r.count} ราย <span className="font-normal text-[10px]" style={{ color: palette.muted }}>({fmtPct(r.pct, 1)})</span>
-                    </span>
-                  </div>
-                  {/* Progress bar */}
-                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: `${palette.gridline}` }}>
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${Math.max(4, r.pct)}%`,
-                        backgroundColor: i === 0 ? palette.statusCritical : i === 1 ? "#F59E0B" : palette.accent,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          ยังไม่มีการบันทึกสาเหตุการยกเลิกงานในระบบ
         </div>
-
-        {/* Right Column: Strategic Action Plans (7 cols) */}
-        <div
-          className="rounded-2xl border p-4 backdrop-blur-sm shadow-md lg:col-span-7 flex flex-col justify-between"
-          style={{ borderColor: palette.gridline, backgroundColor: palette.surface }}
-        >
-          <div className="flex items-center justify-between pb-2.5 border-b" style={{ borderColor: palette.gridline }}>
-            <h3 className="text-xs sm:text-sm font-bold flex items-center gap-1.5" style={{ color: palette.textPrimary }}>
-              <span>💡</span>
-              <span>วิเคราะห์กลุ่มปัญหา & แนวทางแก้ไข (Actionable Strategies)</span>
-            </h3>
-            <span className="text-[11px] font-semibold text-emerald-400">
-              วิเคราะห์จาก 4 กลุ่มสาเหตุจริง
-            </span>
-          </div>
-
-          <div className="mt-3 space-y-2.5 max-h-[360px] overflow-y-auto pr-1.5 custom-scrollbar">
-            {cancellation.insights.map((ins, idx) => (
-              <div
-                key={idx}
-                className="rounded-xl border p-3 transition-colors hover:border-emerald-500/30"
-                style={{ borderColor: palette.gridline, backgroundColor: palette.pagePlane }}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-500/20 text-xs font-bold text-emerald-400">
-                      {idx + 1}
-                    </span>
-                    <h4 className="text-xs font-bold" style={{ color: palette.textPrimary }}>
-                      {ins.title}
-                    </h4>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="rounded-md bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-400">
-                      {ins.count} ราย ({fmtPct(ins.pct, 1)})
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-1.5 flex items-center gap-1 text-[10px] text-amber-400/90 bg-amber-500/10 rounded-md px-2 py-0.5 font-medium">
-                  <span className="font-bold">สาเหตุที่พบ:</span>
-                  <span className="truncate">{ins.sourceReasons}</span>
-                </div>
-
-                <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: palette.textSecondary }}>
-                  <span className="font-semibold text-neutral-400">วิเคราะห์:</span> {ins.description}
-                </p>
-                <p className="mt-1 text-[11px] font-medium leading-relaxed" style={{ color: palette.textPrimary }}>
-                  <span className="font-semibold text-emerald-400">แนวทางแก้ไข:</span> {ins.actionPlan}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      ) : (
+        <DataTable columns={cancelColumns} rows={cancelRows} highlightLastRow={cancelRows.length > 0} compact />
+      )}
     </Slide>
   );
 }

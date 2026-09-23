@@ -63,20 +63,22 @@ export function DataTable({
                 key={i}
                 style={{
                   backgroundColor: isLast
-                    ? palette.accent
+                    ? "rgba(16, 185, 129, 0.22)"
                     : i % 2 === 1
                       ? palette.gridline + "55"
                       : "transparent",
+                  borderTop: isLast ? `2px solid ${palette.accent}` : undefined,
+                  borderBottom: isLast ? `2px solid ${palette.accent}` : undefined,
                 }}
               >
                 {columns.map((col) => (
                   <td
                     key={col.key}
-                    className={`whitespace-nowrap ${compact ? "px-2.5 py-2" : "px-4 py-2.5"}`}
+                    className={`whitespace-nowrap ${compact ? "px-2.5 py-2.5" : "px-4 py-3"}`}
                     style={{
                       textAlign: col.align ?? "left",
-                      color: isLast ? contrastText(palette.accent) : palette.textPrimary,
-                      fontWeight: isLast ? 600 : 400,
+                      color: isLast ? "#FFFFFF" : palette.textPrimary,
+                      fontWeight: isLast ? 700 : 400,
                     }}
                   >
                     {row[col.key]}
