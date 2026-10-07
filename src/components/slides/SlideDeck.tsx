@@ -1022,25 +1022,25 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                     </span>
                   </td>
                   <td className="px-3 py-3 font-mono font-bold text-white text-right whitespace-nowrap text-sm sm:text-base">
-                    {r.netTotal.toLocaleString("th-TH")} ฿
+                    {r.netTotal.toLocaleString("th-TH")}
                   </td>
                   <td className="px-3 py-3 font-mono text-right whitespace-nowrap">
                     <div className="font-bold text-amber-400 text-sm sm:text-base">
-                      {r.feeAmount.toLocaleString("th-TH")} ฿
+                      {r.feeAmount.toLocaleString("th-TH")}
                     </div>
                     <div className="text-[11px] font-medium text-amber-300/80">
                       ({r.netTotal > 0 ? ((r.feeAmount / r.netTotal) * 100).toFixed(1) : "0"}%)
                     </div>
                   </td>
                   <td className="px-3 py-3 font-mono font-bold text-emerald-400 text-right whitespace-nowrap text-sm sm:text-base">
-                    {r.caregiverNet.toLocaleString("th-TH")} ฿
+                    {r.caregiverNet.toLocaleString("th-TH")}
                   </td>
                   {r.monthlyValues.map((mv, mIdx) => (
                     <td key={mIdx} className="px-1 py-3 text-center whitespace-nowrap">
                       {mv.type === "realized" ? (
                         <div className="inline-flex min-w-[84px] flex-col items-center justify-center rounded-xl bg-emerald-950/80 border border-emerald-500/60 px-2 py-1 shadow-sm transition-transform hover:scale-105">
                           <span className="font-mono font-extrabold text-xs sm:text-sm text-emerald-300">
-                            {mv.amount.toLocaleString("th-TH")} ฿
+                            {mv.amount.toLocaleString("th-TH")}
                           </span>
                           <span className="text-[10px] sm:text-xs font-semibold text-emerald-400">
                             (รับแล้ว)
@@ -1049,7 +1049,7 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                       ) : mv.type === "pending" ? (
                         <div className="inline-flex min-w-[84px] flex-col items-center justify-center rounded-xl bg-amber-950/80 border border-amber-500/60 px-2 py-1 shadow-sm transition-transform hover:scale-105">
                           <span className="font-mono font-extrabold text-xs sm:text-sm text-amber-300">
-                            {mv.amount.toLocaleString("th-TH")} ฿
+                            {mv.amount.toLocaleString("th-TH")}
                           </span>
                           <span className="text-[10px] sm:text-xs font-semibold text-amber-400">
                             (รอรับ)
@@ -1142,10 +1142,10 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                       <td key={mIdx} className="px-1 py-3 font-mono text-center whitespace-nowrap">
                         <div className="flex flex-col items-center justify-center gap-0.5">
                           <span className="font-extrabold text-xs sm:text-sm text-emerald-300 font-mono">
-                            {rVal.toLocaleString("th-TH")} ฿
+                            {rVal.toLocaleString("th-TH")}
                           </span>
                           <span className="font-extrabold text-xs sm:text-sm text-amber-300 font-mono">
-                            {pVal.toLocaleString("th-TH")} ฿
+                            {pVal.toLocaleString("th-TH")}
                           </span>
                         </div>
                       </td>
@@ -1155,7 +1155,7 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                     return (
                       <td key={mIdx} className="px-1 py-3.5 font-mono text-center whitespace-nowrap">
                         <span className="font-black text-xs sm:text-sm text-emerald-300 font-mono">
-                          {rVal.toLocaleString("th-TH")} ฿
+                          {rVal.toLocaleString("th-TH")}
                         </span>
                       </td>
                     );
@@ -1164,7 +1164,7 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                     return (
                       <td key={mIdx} className="px-1 py-3.5 font-mono text-center whitespace-nowrap">
                         <span className="font-black text-xs sm:text-sm text-amber-300 font-mono">
-                          {pVal.toLocaleString("th-TH")} ฿
+                          {pVal.toLocaleString("th-TH")}
                         </span>
                       </td>
                     );
@@ -1176,7 +1176,7 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                   );
                 })}
                 <td className="px-3.5 py-3.5 text-center font-mono text-emerald-300 font-black whitespace-nowrap text-sm sm:text-base">
-                  {Math.round(totalExpected).toLocaleString("th-TH")} ฿
+                  {Math.round(totalExpected).toLocaleString("th-TH")}
                 </td>
               </tr>
             </tfoot>
@@ -1452,7 +1452,6 @@ export function SlideDeck({ data }: { data: SlideDeckData }) {
     }
     if (carewell) {
       list.push(...AccountOverviewSlides(carewell, palette));
-      list.push(<div key="won-finance">{WonFinanceSlide(data.wonFinance, palette)}</div>);
       list.push(<div key="won-finance-detail">{WonFinanceDetailSlide(data.wonFinance, palette)}</div>);
       list.push(<div key="cancellation-analysis">{CancellationAnalysisSlide(data.cancellation, palette)}</div>);
     }

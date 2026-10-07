@@ -642,7 +642,7 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
       if (pVal > 0) return `${Math.round(pVal).toLocaleString("th-TH")} (รอรับ)`;
       return "-";
     }),
-    `${Math.round(totalExpected).toLocaleString("th-TH")} ฿`,
+    `${Math.round(totalExpected).toLocaleString("th-TH")}`,
   ]);
 
   addDataTable(
@@ -742,7 +742,6 @@ export async function buildPptx(data: SlideDeckData): Promise<Buffer> {
   }
   if (carewell) {
     accountSlides(pptx, carewell);
-    wonFinanceSlide(pptx, data.wonFinance);
     wonFinanceDetailSlide(pptx, data.wonFinance);
     cancellationSlide(pptx, data.cancellation);
   }
