@@ -26,29 +26,29 @@ export async function POST(req: Request) {
   const skipped: { row: number; reason: string }[] = [];
 
   parsed.data.forEach((raw, i) => {
-    const caregiver_code = getField(raw, "รหัสผู้ดูแล");
+    const caregiver_code = getField(raw, "รหัสผู้ดูแล", "caregiver_code", "caregiver code", "code", "รหัส");
     if (!caregiver_code) {
       skipped.push({ row: i + 2, reason: "ไม่มีรหัสผู้ดูแล" });
       return;
     }
     rows.push({
       caregiver_code,
-      prefix: getField(raw, "คำนำหน้า") || null,
-      full_name: getField(raw, "ชื่อ-นามสกุล") || null,
-      phone: getField(raw, "เบอร์โทรศัพท์") || null,
-      gender: getField(raw, "เพศ") || null,
-      status: getField(raw, "สถานะ") || null,
-      registered_date: parseDateOrNull(getField(raw, "วันที่สมัคร")),
-      approved_date: parseDateOrNull(getField(raw, "วันที่อนุมัติ")),
-      bank_name: getField(raw, "ธนาคาร") || null,
-      bank_account_no: getField(raw, "เลขบัญชี") || null,
-      position: formatPositionLabel(getField(raw, "ตำแหน่ง")),
-      job_type: getField(raw, "ประเภทงาน") || null,
-      province: getField(raw, "จังหวัด") || null,
-      special_skill: getField(raw, "Special Skill") || null,
-      lifestyle: getField(raw, "Lifestyle") || null,
-      badge: getField(raw, "Badge") || null,
-      updated_date: parseDateOrNull(getField(raw, "วันที่แก้ไขล่าสุด")),
+      prefix: getField(raw, "คำนำหน้า", "prefix") || null,
+      full_name: getField(raw, "ชื่อ-นามสกุล", "ชื่อ - นามสกุล", "ชื่อ นามสกุล", "ชื่อ", "full_name", "fullname", "name") || null,
+      phone: getField(raw, "เบอร์โทรศัพท์", "เบอร์โทร", "โทรศัพท์", "phone", "tel") || null,
+      gender: getField(raw, "เพศ", "gender") || null,
+      status: getField(raw, "สถานะ", "status") || null,
+      registered_date: parseDateOrNull(getField(raw, "วันที่สมัคร", "registered_date", "register_date", "สมัครเมื่อ")),
+      approved_date: parseDateOrNull(getField(raw, "วันที่อนุมัติ", "approved_date", "approve_date", "อนุมัติเมื่อ")),
+      bank_name: getField(raw, "ธนาคาร", "bank", "bank_name") || null,
+      bank_account_no: getField(raw, "เลขบัญชี", "เลขที่บัญชี", "bank_account_no", "account_no") || null,
+      position: formatPositionLabel(getField(raw, "ตำแหน่ง", "position")),
+      job_type: getField(raw, "ประเภทงาน", "job_type", "type") || null,
+      province: getField(raw, "จังหวัด", "province") || null,
+      special_skill: getField(raw, "Special Skill", "special_skill", "ทักษะพิเศษ", "ความสามารถพิเศษ") || null,
+      lifestyle: getField(raw, "Lifestyle", "lifestyle", "ไลฟ์สไตล์") || null,
+      badge: getField(raw, "Badge", "badge", "เข็มกลัด", "เหรียญ") || null,
+      updated_date: parseDateOrNull(getField(raw, "วันที่แก้ไขล่าสุด", "updated_date", "update_date", "แก้ไขล่าสุด")),
     });
   });
 

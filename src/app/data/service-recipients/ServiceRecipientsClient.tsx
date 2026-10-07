@@ -59,6 +59,7 @@ export function ServiceRecipientsClient({
   const [serviceDate, setServiceDate] = useState("");
   const [careLevel, setCareLevel] = useState("");
   const [workFormat, setWorkFormat] = useState("");
+  const [workMonth, setWorkMonth] = useState("");
   const [status, setStatus] = useState("");
 
   // Payment Form State (for Won)
@@ -75,6 +76,13 @@ export function ServiceRecipientsClient({
 
   // Table Filter State
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("ทั้งหมด");
+
+  const computedWorkFormat =
+    workFormat === "แบบประจำ(รายเดือน)"
+      ? workMonth
+        ? `แบบประจำ(รายเดือน) ${workMonth}`
+        : "แบบประจำ(รายเดือน)"
+      : workFormat;
 
   // Calculations for Won: ยอดที่ผู้ดูแลได้รับ = ยอดสุทธิทั้งหมด - ค่าดำเนินการ
   const isWon = status === "Won";
@@ -146,7 +154,7 @@ export function ServiceRecipientsClient({
         formData.append("job_code", jobCode);
         formData.append("service_date", serviceDate);
         formData.append("care_level", careLevel);
-        formData.append("work_format", workFormat);
+        formData.append("work_format", computedWorkFormat);
         formData.append("status", status);
 
         if (isWon) {
@@ -166,6 +174,7 @@ export function ServiceRecipientsClient({
         setServiceDate("");
         setCareLevel("");
         setWorkFormat("");
+        setWorkMonth("");
         setStatus("");
         setNetTotalStr("");
         setFeeAmountStr("");
@@ -232,6 +241,10 @@ export function ServiceRecipientsClient({
               <div className="flex justify-between">
                 <span className="text-neutral-500">วันที่รับบริการ:</span>
                 <span className="font-semibold text-neutral-900 dark:text-neutral-100">{serviceDate || "-"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-500">รูปแบบการทำงาน:</span>
+                <span className="font-semibold text-neutral-900 dark:text-neutral-100">{computedWorkFormat || "-"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-neutral-500">สถานะ:</span>
@@ -371,14 +384,42 @@ export function ServiceRecipientsClient({
 
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-neutral-700 dark:text-neutral-300">รูปแบบการทำงาน</span>
-            <input
-              type="text"
+            <select
               value={workFormat}
-              onChange={(e) => setWorkFormat(e.target.value)}
-              placeholder="เช่น แบบประจำ (รายวัน), 12 ชม."
+              onChange={(e) => {
+                setWorkFormat(e.target.value);
+                if (e.target.value !== "แบบประจำ(รายเดือน)") {
+                  setWorkMonth("");
+                }
+              }}
               className="rounded-xl border border-neutral-300 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-            />
+            >
+              <option value="">- เลือกรูปแบบการทำงาน -</option>
+              <option value="แบบไป-กลับ">แบบไป-กลับ</option>
+              <option value="แบบประจำ(รายวัน)">แบบประจำ(รายวัน)</option>
+              <option value="แบบประจำ(รายเดือน)">แบบประจำ(รายเดือน)</option>
+            </select>
           </label>
+
+          {workFormat === "แบบประจำ(รายเดือน)" && (
+            <label className="flex flex-col gap-1 text-sm sm:col-span-2 animate-in fade-in duration-200">
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                ระยะเวลา <span className="text-xs text-neutral-500 font-normal">(จำนวนเดือน)</span>
+              </span>
+              <select
+                value={workMonth}
+                onChange={(e) => setWorkMonth(e.target.value)}
+                className="rounded-xl border border-neutral-300 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+              >
+                <option value="">- เลือกระยะเวลา -</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={`${m} เดือน`}>
+                    {m} เดือน
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">
             <span className="font-medium text-neutral-700 dark:text-neutral-300">สถานะ</span>

@@ -17,6 +17,25 @@ import {
   type ServiceRecipientRow,
 } from "../../ServiceRecipientsClient";
 
+function parseInitialWorkFormat(raw: string | null | undefined): { format: string; month: string } {
+  if (!raw) return { format: "", month: "" };
+  const val = raw.trim();
+  if (val === "แบบไป-กลับ") {
+    return { format: "แบบไป-กลับ", month: "" };
+  }
+  if (val === "แบบประจำ(รายวัน)" || val === "แบบประจำ (รายวัน)") {
+    return { format: "แบบประจำ(รายวัน)", month: "" };
+  }
+  if (val.includes("รายเดือน")) {
+    const match = val.match(/(\d+)\s*เดือน/);
+    if (match && Number(match[1]) >= 1 && Number(match[1]) <= 12) {
+      return { format: "แบบประจำ(รายเดือน)", month: `${match[1]} เดือน` };
+    }
+    return { format: "แบบประจำ(รายเดือน)", month: "" };
+  }
+  return { format: val, month: "" };
+}
+
 export function EditServiceRecipientClient({
   row,
 }: {
@@ -25,10 +44,12 @@ export function EditServiceRecipientClient({
   const [isPending, startTransition] = useTransition();
 
   // Form State
+  const initialWork = parseInitialWorkFormat(row.work_format);
   const [jobCode, setJobCode] = useState(row.job_code ?? "");
   const [serviceDate, setServiceDate] = useState(row.service_date ?? "");
   const [careLevel, setCareLevel] = useState(row.care_level ?? "");
-  const [workFormat, setWorkFormat] = useState(row.work_format ?? "");
+  const [workFormat, setWorkFormat] = useState(initialWork.format);
+  const [workMonth, setWorkMonth] = useState(initialWork.month);
   const [status, setStatus] = useState(row.status ?? "");
 
   // Payment Form State
@@ -46,6 +67,13 @@ export function EditServiceRecipientClient({
 
   // Confirmation Modal State
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  const computedWorkFormat =
+    workFormat === "แบบประจำ(รายเดือน)"
+      ? workMonth
+        ? `แบบประจำ(รายเดือน) ${workMonth}`
+        : "แบบประจำ(รายเดือน)"
+      : workFormat;
 
   // Calculations for Won: ยอดที่ผู้ดูแลได้รับ = ยอดสุทธิทั้งหมด - ค่าดำเนินการ
   const isWon = status === "Won";
@@ -113,7 +141,7 @@ export function EditServiceRecipientClient({
         formData.append("job_code", jobCode);
         formData.append("service_date", serviceDate);
         formData.append("care_level", careLevel);
-        formData.append("work_format", workFormat);
+        formData.append("work_format", computedWorkFormat);
         formData.append("status", status);
 
         if (isWon) {
@@ -166,6 +194,10 @@ export function EditServiceRecipientClient({
               <div className="flex justify-between">
                 <span className="text-neutral-500">วันที่รับบริการ:</span>
                 <span className="font-semibold text-neutral-900 dark:text-neutral-100">{serviceDate || "-"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-500">รูปแบบการทำงาน:</span>
+                <span className="font-semibold text-neutral-900 dark:text-neutral-100">{computedWorkFormat || "-"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-neutral-500">สถานะ:</span>
@@ -305,13 +337,46 @@ export function EditServiceRecipientClient({
 
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-neutral-700 dark:text-neutral-300">รูปแบบการทำงาน</span>
-            <input
-              type="text"
+            <select
               value={workFormat}
-              onChange={(e) => setWorkFormat(e.target.value)}
+              onChange={(e) => {
+                setWorkFormat(e.target.value);
+                if (e.target.value !== "แบบประจำ(รายเดือน)") {
+                  setWorkMonth("");
+                }
+              }}
               className="rounded-xl border border-neutral-300 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-            />
+            >
+              <option value="">- เลือกรูปแบบการทำงาน -</option>
+              <option value="แบบไป-กลับ">แบบไป-กลับ</option>
+              <option value="แบบประจำ(รายวัน)">แบบประจำ(รายวัน)</option>
+              <option value="แบบประจำ(รายเดือน)">แบบประจำ(รายเดือน)</option>
+              {workFormat &&
+                !["แบบไป-กลับ", "แบบประจำ(รายวัน)", "แบบประจำ(รายเดือน)"].includes(workFormat) && (
+                  <option value={workFormat}>{workFormat} (เดิม)</option>
+                )}
+            </select>
           </label>
+
+          {workFormat === "แบบประจำ(รายเดือน)" && (
+            <label className="flex flex-col gap-1 text-sm sm:col-span-2 animate-in fade-in duration-200">
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                ระยะเวลา <span className="text-xs text-neutral-500 font-normal">(จำนวนเดือน)</span>
+              </span>
+              <select
+                value={workMonth}
+                onChange={(e) => setWorkMonth(e.target.value)}
+                className="rounded-xl border border-neutral-300 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+              >
+                <option value="">- เลือกระยะเวลา -</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={`${m} เดือน`}>
+                    {m} เดือน
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">
             <span className="font-medium text-neutral-700 dark:text-neutral-300">สถานะ</span>
