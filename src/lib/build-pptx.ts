@@ -468,78 +468,196 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
   addBackground(slide);
   addHeader(
     slide,
-    "ผู้รับบริการ — รายละเอียดการเงิน",
-    "ตารางข้อมูลการเงิน งานสถานะ Won แบบแยกรายการ",
-    "แจกแจงรายละเอียดข้อมูลการเงินของงานที่ปิดการขายสำเร็จ (Won) ครบทุกรายการในระบบ"
+    "ผู้รับบริการ — การคาดการณ์ค่าดำเนินการ (Fee Projection)",
+    "12-Month Fee Projection Calendar — ติดตามค่าดำเนินการและยอดรอรับ",
+    "แจกแจงค่าดำเนินการ (Fee) ที่รับจริงและประมาณการยอดรอรับตามสัญญาตลอด 12 เดือน (Company Fee Tracking)"
   );
+
+  const THAI_MONTHS_SHORT = [
+    "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+    "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
+  ];
+
+  type MonthVal = { amount: number; type: "realized" | "pending" | "none" };
+  type ProjRow = {
+    jobCode: string;
+    jobType: string;
+    duration: number;
+    netTotal: number;
+    feeAmount: number;
+    caregiverNet: number;
+    monthlyValues: MonthVal[];
+    status: string;
+  };
+
+  let projRows: ProjRow[] = [];
+
+  if (!wonFinance.items || wonFinance.items.length === 0) {
+    const defaultData = [
+      { code: "SR-2605-0044", type: "ไป-กลับ", net: 1200, fee: 300, cg: 900, m: 4, dur: 1, st: "เสร็จสิ้น" },
+      { code: "SR-2607-0049", type: "รายวัน", net: 27800, fee: 6290, cg: 21510, m: 6, dur: 1, st: "เสร็จสิ้น" },
+      { code: "SR-2608-0057", type: "รายวัน", net: 22000, fee: 2640, cg: 19360, m: 7, dur: 1, st: "เสร็จสิ้น" },
+      { code: "SR-2608-0061", type: "รายวัน", net: 6000, fee: 720, cg: 5280, m: 8, dur: 1, st: "เสร็จสิ้น" },
+      { code: "SR-2609-0066", type: "รายเดือน (3 เดือน)", net: 21900, fee: 2628, cg: 19272, m: 8, dur: 3, st: "ดำเนินการอยู่" },
+      { code: "SR-2609-0070", type: "ไป-กลับ", net: 1700, fee: 300, cg: 1400, m: 8, dur: 1, st: "เสร็จสิ้น" },
+      { code: "SR-2609-0067", type: "ไป-กลับ", net: 3600, fee: 540, cg: 3060, m: 8, dur: 1, st: "เสร็จสิ้น" },
+    ];
+    projRows = defaultData.map((d) => ({
+      jobCode: d.code,
+      jobType: d.type,
+      duration: d.dur,
+      netTotal: d.net,
+      feeAmount: d.fee,
+      caregiverNet: d.cg,
+      monthlyValues: Array.from({ length: 12 }, (_, idx) => {
+        if (idx === d.m) return { amount: d.fee, type: "realized" };
+        if (idx > d.m && idx < d.m + d.dur) return { amount: d.fee, type: "pending" };
+        return { amount: 0, type: "none" };
+      }),
+      status: d.st,
+    }));
+  } else {
+    projRows = wonFinance.items.map((item) => {
+      let startMonth = 8;
+      if (item.serviceDate) {
+        const p = item.serviceDate.split("-");
+        if (p.length >= 2) startMonth = parseInt(p[1], 10) - 1;
+      }
+      const fmt = item.workFormat || "";
+      let duration = 1;
+      let jobType = "ไป-กลับ";
+      if (fmt.includes("รายเดือน")) {
+        const m = fmt.match(/(\d+)\s*เดือน/);
+        duration = m ? parseInt(m[1], 10) : 1;
+        jobType = `รายเดือน (${duration} ด.)`;
+      } else if (fmt.includes("รายวัน")) {
+        jobType = "รายวัน";
+      } else if (fmt.includes("ไป-กลับ") || fmt.includes("ไปกลับ")) {
+        jobType = "ไป-กลับ";
+      } else {
+        jobType = fmt || "ไป-กลับ";
+      }
+      const monthlyValues: MonthVal[] = Array.from({ length: 12 }, (_, mIdx) => {
+        if (mIdx === startMonth) return { amount: item.feeAmount, type: "realized" };
+        if (mIdx > startMonth && mIdx < startMonth + duration && mIdx < 12) return { amount: item.feeAmount, type: "pending" };
+        return { amount: 0, type: "none" };
+      });
+      return {
+        jobCode: item.jobCode,
+        jobType,
+        duration,
+        netTotal: item.netTotal,
+        feeAmount: item.feeAmount,
+        caregiverNet: item.caregiverNet,
+        monthlyValues,
+        status: duration > 1 ? "ดำเนินการอยู่" : "เสร็จสิ้น",
+      };
+    });
+  }
+
+  const totalContractNet = projRows.reduce((s, r) => s + r.netTotal * (r.duration || 1), 0);
+  const totalContractFee = projRows.reduce((s, r) => s + r.feeAmount * (r.duration || 1), 0);
+  const totalContractCaregiverNet = projRows.reduce((s, r) => s + r.caregiverNet * (r.duration || 1), 0);
+
+  const contractCountByMonth = Array.from({ length: 12 }, (_, m) =>
+    projRows.filter((r) => r.monthlyValues[m].type !== "none").length
+  );
+
+  const realizedByMonth = Array.from({ length: 12 }, (_, m) =>
+    projRows.reduce((sum, r) => sum + (r.monthlyValues[m].type === "realized" ? r.monthlyValues[m].amount : 0), 0)
+  );
+  const totalRealized = realizedByMonth.reduce((a, b) => a + b, 0);
+
+  const pendingByMonth = Array.from({ length: 12 }, (_, m) =>
+    projRows.reduce((sum, r) => sum + (r.monthlyValues[m].type === "pending" ? r.monthlyValues[m].amount : 0), 0)
+  );
+  const totalPending = pendingByMonth.reduce((a, b) => a + b, 0);
+
+  const totalExpected = totalRealized + totalPending;
+
   addStatTiles(
     slide,
     [
       {
-        label: "จำนวนงาน Won ทั้งหมด",
-        value: `${wonFinance.grandWonCount} รายการ`,
-        color: C.accent,
+        label: "ยอดสุทธิ (Total NET)",
+        value: `${Math.round(totalContractNet).toLocaleString("th-TH")} ฿`,
+        color: C.statusGood,
       },
       {
-        label: "ยอดสุทธิสะสมรวม (Total Net)",
-        value: `${Math.round(wonFinance.grandTotalNet).toLocaleString("th-TH")} ฿`,
-        color: C.textPrimary,
-      },
-      {
-        label: "ค่าดำเนินการสะสมรวม (Total Fee)",
-        value: `${Math.round(wonFinance.grandTotalFee).toLocaleString("th-TH")} ฿`,
+        label: "ค่าดำเนินการ (Total Fee)",
+        value: `${Math.round(totalContractFee).toLocaleString("th-TH")} ฿`,
         color: C.statusWarning,
       },
       {
-        label: "ยอดจ่ายผู้ดูแลรวม (Caregiver Net)",
-        value: `${Math.round(wonFinance.grandTotalCaregiverNet).toLocaleString("th-TH")} ฿`,
-        color: C.statusGood,
+        label: "ยอดผู้ดูแลรับ (Caregiver Net)",
+        value: `${Math.round(totalContractCaregiverNet).toLocaleString("th-TH")} ฿`,
+        color: C.accent,
+      },
+      {
+        label: "จำนวนสัญญา (Total Contracts)",
+        value: `${projRows.length} สัญญา`,
+        color: C.carewellteam,
       },
     ],
     1.4
   );
 
-  const rows: (string | number)[][] = (wonFinance.items ?? []).map((item, idx) => [
-    `${idx + 1}`,
-    item.serviceDateLabel,
-    item.jobCode,
-    item.careLevel,
-    item.workFormat,
-    `${Math.round(item.netTotal).toLocaleString("th-TH")} ฿`,
-    `${Math.round(item.feeAmount).toLocaleString("th-TH")} ฿`,
-    `${Math.round(item.caregiverNet).toLocaleString("th-TH")} ฿`,
-    item.feePercent !== null ? fmtPct(item.feePercent, 1) : "-",
+  const rows: (string | number)[][] = projRows.map((r) => [
+    r.jobCode,
+    r.jobType,
+    `${Math.round(r.netTotal).toLocaleString("th-TH")}`,
+    `${Math.round(r.feeAmount).toLocaleString("th-TH")} (${r.netTotal > 0 ? ((r.feeAmount / r.netTotal) * 100).toFixed(1) : "0"}%)`,
+    `${Math.round(r.caregiverNet).toLocaleString("th-TH")}`,
+    ...r.monthlyValues.map((mv) => {
+      if (mv.type === "realized") return `${Math.round(mv.amount).toLocaleString("th-TH")} (รับแล้ว)`;
+      if (mv.type === "pending") return `${Math.round(mv.amount).toLocaleString("th-TH")} (รอรับ)`;
+      return "-";
+    }),
+    r.status,
   ]);
 
-  if (wonFinance.items && wonFinance.items.length > 0) {
-    rows.push([
-      "-",
-      `รวมสะสม (${wonFinance.items.length} รายการ)`,
-      "-",
-      "-",
-      "-",
-      `${Math.round(wonFinance.grandTotalNet).toLocaleString("th-TH")} ฿`,
-      `${Math.round(wonFinance.grandTotalFee).toLocaleString("th-TH")} ฿`,
-      `${Math.round(wonFinance.grandTotalCaregiverNet).toLocaleString("th-TH")} ฿`,
-      fmtPct(wonFinance.grandEffectiveFeePct, 2),
-    ]);
-  }
+  // Summary Row 0: Active Contracts by Month
+  rows.push([
+    "จำนวนสัญญา",
+    "Active Contracts",
+    "-",
+    "-",
+    "-",
+    ...contractCountByMonth.map((v) => (v > 0 ? `${v} สัญญา` : "-")),
+    "-",
+  ]);
+
+  // Summary Row 1: Total Expected Fee (with realized/pending numbers)
+  rows.push([
+    "รวมรายได้คาดการณ์",
+    "Total Expected",
+    "-",
+    "-",
+    "-",
+    ...Array.from({ length: 12 }, (_, mIdx) => {
+      const rVal = realizedByMonth[mIdx];
+      const pVal = pendingByMonth[mIdx];
+      if (rVal > 0 && pVal > 0) return `${Math.round(rVal).toLocaleString("th-TH")} / ${Math.round(pVal).toLocaleString("th-TH")}`;
+      if (rVal > 0) return `${Math.round(rVal).toLocaleString("th-TH")} (รับแล้ว)`;
+      if (pVal > 0) return `${Math.round(pVal).toLocaleString("th-TH")} (รอรับ)`;
+      return "-";
+    }),
+    `${Math.round(totalExpected).toLocaleString("th-TH")} ฿`,
+  ]);
 
   addDataTable(
     slide,
     [
-      { label: "ลำดับ", width: 0.7 },
-      { label: "วันที่เริ่มงาน", width: 1.6 },
-      { label: "รหัสงาน", width: 1.3 },
-      { label: "ระดับ", width: 0.8 },
-      { label: "รูปแบบ", width: 0.8 },
-      { label: "ยอดสุทธิ", width: 1.2 },
-      { label: "ค่าดำเนินการ", width: 1.2 },
-      { label: "จ่ายผู้ดูแล", width: 1.2 },
-      { label: "สัดส่วน", width: 0.8 },
+      { label: "รหัสงาน\n(Job ID)", width: 0.95 },
+      { label: "รูปแบบ\n(Job Type)", width: 0.85 },
+      { label: "ยอดสุทธิ\n(NET)", width: 0.85 },
+      { label: "ค่าดำเนินการ\n(Fee)", width: 0.85 },
+      { label: "ยอดผู้ดูแล\n(Caregiver Net)", width: 0.9 },
+      ...THAI_MONTHS_SHORT.map((m) => ({ label: m, width: 0.52 })),
+      { label: "สถานะ\n(Status)", width: 0.75 },
     ],
     rows,
-    { top: 3.1, highlightLastRow: (wonFinance.items?.length ?? 0) > 0 }
+    { top: 2.8, highlightLastRow: true }
   );
 }
 

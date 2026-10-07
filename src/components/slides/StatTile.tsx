@@ -23,20 +23,20 @@ export function StatTile({
   const isDown = !!delta && delta.trim().startsWith("-");
 
   return (
-    <GlowCard customSize glowColor={glow} className="h-full w-full !grid-rows-none justify-start">
+    <GlowCard customSize glowColor={glow} className="h-full w-full !grid-rows-none justify-start p-5 sm:p-6">
       <div>
-        <p className="text-sm font-medium" style={{ color: palette.textSecondary }}>
+        <p className="text-sm sm:text-base font-semibold" style={{ color: palette.textSecondary }}>
           {label}
         </p>
         <p
-          className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold tabular-nums"
+          className="mt-2 font-[family-name:var(--font-display)] text-3xl sm:text-4xl lg:text-5xl font-extrabold tabular-nums tracking-tight"
           style={{ color: accent ?? palette.textPrimary }}
         >
           {value}
         </p>
         {delta && (
           <p
-            className="mt-1 text-sm font-medium"
+            className="mt-1.5 text-xs sm:text-sm font-medium"
             style={{
               color: isUp ? palette.statusGood : isDown ? palette.statusCritical : palette.muted,
             }}
