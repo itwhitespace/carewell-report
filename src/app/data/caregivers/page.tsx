@@ -87,6 +87,10 @@ export default async function CaregiversPage() {
             label="สถานะ"
             name="status"
             options={[
+              { value: "FREE", label: "FREE (ว่าง/อนุมัติ)" },
+              { value: "BUSY", label: "BUSY (ติดเคส/อนุมัติ)" },
+              { value: "PENDING", label: "PENDING (รออนุมัติ)" },
+              { value: "ADM_REJECT", label: "ADM_REJECT (ปฏิเสธ)" },
               { value: "อนุมัติแล้ว", label: "อนุมัติแล้ว" },
               { value: "รออนุมัติ", label: "รออนุมัติ" },
               { value: "ไม่อนุมัติ", label: "ไม่อนุมัติ" },
@@ -232,8 +236,17 @@ function SelectField({
 
 function StatusBadge({ status, approved }: { status: string | null; approved: boolean }) {
   const displayStatus = status || (approved ? "อนุมัติแล้ว" : "รออนุมัติ");
-  const isApproved = displayStatus.includes("อนุมัติ") && !displayStatus.includes("ไม่");
-  const isRejected = displayStatus.includes("ไม่");
+  const upper = displayStatus.trim().toUpperCase();
+  const isApproved =
+    upper === "FREE" ||
+    upper === "BUSY" ||
+    upper.includes("APPROVE") ||
+    (upper.includes("อนุมัติ") && !upper.includes("ไม่") && !upper.includes("รอ"));
+  const isRejected =
+    upper === "ADM_REJECT" ||
+    upper.includes("REJECT") ||
+    upper.includes("ไม่") ||
+    upper.includes("ปฏิเสธ");
 
   return (
     <span

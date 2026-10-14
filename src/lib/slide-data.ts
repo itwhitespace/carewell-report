@@ -3,6 +3,7 @@ import {
   buildGrowthSeries,
   caregiverPositionByMonth,
   cancellationAnalysis,
+  isCaregiverRejected,
   latestSnapshot,
   monthlyChannelFunnel,
   monthlyConversion,
@@ -92,12 +93,14 @@ export async function loadSlideData(): Promise<SlideDeckData> {
     channelFunnel: key === "carewell" ? monthlyChannelFunnel(lineOaRows, key, recipients) : undefined,
   }));
 
+  const validCaregivers = caregivers.filter((c) => !isCaregiverRejected(c.status));
+
   return {
-    totalCaregivers: caregivers.length,
+    totalCaregivers: validCaregivers.length,
     growth,
     statusData: statusCounts(caregivers.map((c) => c.status)),
-    provinceData: rankAndFold(caregivers.map((c) => c.province), 10),
-    jobTypeData: rankAndFold(caregivers.map((c) => c.job_type), 8),
+    provinceData: rankAndFold(validCaregivers.map((c) => c.province), 10),
+    jobTypeData: rankAndFold(validCaregivers.map((c) => c.job_type), 8),
     periodLabel,
     accounts,
     positionStats: caregiverPositionByMonth(caregivers),

@@ -144,11 +144,38 @@ export function statusCounts(values: (string | null)[]): RankedItem[] {
  * the register/approve/awaiting stat tiles so both agree on the same labels. */
 export type StatusBucket = "good" | "pending" | "critical" | "neutral";
 
+export function isCaregiverRejected(status: string | null): boolean {
+  const s = (status ?? "").trim().toUpperCase();
+  return (
+    s === "ADM_REJECT" ||
+    s.includes("REJECT") ||
+    s.includes("ปฏิเสธ") ||
+    s.includes("ไม่อนุมัติ")
+  );
+}
+
+export function isCaregiverApproved(status: string | null, approvedDate?: string | null): boolean {
+  if (isCaregiverRejected(status)) return false;
+  const s = (status ?? "").trim().toUpperCase();
+  if (
+    s === "FREE" ||
+    s === "BUSY" ||
+    s.includes("APPROVE") ||
+    (s.includes("อนุมัติ") && !s.includes("รอ"))
+  ) {
+    return true;
+  }
+  if (s === "PENDING" || s.includes("รอ")) {
+    return false;
+  }
+  return Boolean(approvedDate);
+}
+
 export function classifyCaregiverStatus(status: string | null): StatusBucket {
   const s = (status ?? "").toLowerCase();
   const negative = ["ไม่อนุมัติ", "ปฏิเสธ", "ยกเลิก", "ระงับ", "reject", "cancel", "block"];
   const pending = ["รอ", "pending", "review"];
-  const positive = ["อนุมัติ", "active", "approve", "ผ่าน"];
+  const positive = ["อนุมัติ", "active", "approve", "ผ่าน", "free", "busy"];
 
   if (negative.some((k) => s.includes(k))) return "critical";
   if (pending.some((k) => s.includes(k))) return "pending";
@@ -362,6 +389,7 @@ export function monthlyConversion(
 
   const regByMonth = new Map<string, number>();
   for (const c of caregivers) {
+    if (isCaregiverRejected(c.status)) continue;
     if (!c.registered_date) continue;
     const mk = monthKeyOf(c.registered_date);
     regByMonth.set(mk, (regByMonth.get(mk) ?? 0) + 1);
@@ -454,6 +482,7 @@ export function weeklyConversion(
     const newFollowers = cumulative - prevCumulative;
 
     const regsInWeek = caregivers.filter((c) => {
+      if (isCaregiverRejected(c.status)) return false;
       if (!c.registered_date) return false;
       return c.registered_date >= startDateIso && c.registered_date <= endDateIso;
     });
@@ -600,11 +629,19 @@ export function caregiverPositionByMonth(caregivers: CaregiverRow[]): PositionMo
   let awaitingTotal = 0;
 
   for (const c of caregivers) {
+    // ADM_REJECT = ไม่ต้องนับจำนวน
+    if (isCaregiverRejected(c.status)) continue;
+
     registerTotal++;
-    // Approve/Awaiting is defined by whether an approval date has been
-    // recorded, not by the free-text status label.
-    if (c.approved_date) approveTotal++;
-    else awaitingTotal++;
+
+    // - FREE, Busy = Approve
+    // - Pending = Awaiting approval
+    // (fallback ไปที่ approved_date หากไม่มีสถานะระบุไว้)
+    if (isCaregiverApproved(c.status, c.approved_date)) {
+      approveTotal++;
+    } else {
+      awaitingTotal++;
+    }
 
     if (!c.registered_date) continue;
     const mk = monthKeyOf(c.registered_date);

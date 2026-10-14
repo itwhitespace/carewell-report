@@ -73,6 +73,10 @@ export default async function EditCaregiverPage({
           name="status"
           defaultValue={row.status ?? ""}
           options={[
+            { value: "FREE", label: "FREE (ว่าง/อนุมัติ)" },
+            { value: "BUSY", label: "BUSY (ติดเคส/อนุมัติ)" },
+            { value: "PENDING", label: "PENDING (รออนุมัติ)" },
+            { value: "ADM_REJECT", label: "ADM_REJECT (ปฏิเสธ)" },
             { value: "อนุมัติแล้ว", label: "อนุมัติแล้ว" },
             { value: "รออนุมัติ", label: "รออนุมัติ" },
             { value: "ไม่อนุมัติ", label: "ไม่อนุมัติ" },
