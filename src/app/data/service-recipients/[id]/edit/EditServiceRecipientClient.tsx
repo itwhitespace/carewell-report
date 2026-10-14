@@ -9,6 +9,7 @@ import {
   Check,
   UserCheck,
   X,
+  Calendar,
 } from "lucide-react";
 import { updateServiceRecipient } from "../../actions";
 import {
@@ -16,6 +17,7 @@ import {
   parseNumberInput,
   type ServiceRecipientRow,
 } from "../../ServiceRecipientsClient";
+import { parsePaidInstallments } from "@/lib/report";
 
 function parseInitialWorkFormat(raw: string | null | undefined): { format: string; month: string } {
   if (!raw) return { format: "", month: "" };
@@ -34,6 +36,29 @@ function parseInitialWorkFormat(raw: string | null | undefined): { format: strin
     return { format: "แบบประจำ(รายเดือน)", month: "" };
   }
   return { format: val, month: "" };
+}
+
+function getInstallmentMonth(dateStr: string, index: number): string {
+  if (!dateStr) return `งวดที่ ${index + 1}`;
+  try {
+    const parts = dateStr.split("-");
+    if (parts.length >= 2) {
+      let y = parseInt(parts[0], 10);
+      let m = parseInt(parts[1], 10) - 1 + index;
+      while (m >= 12) {
+        m -= 12;
+        y += 1;
+      }
+      const THAI_MONTHS_SHORT = [
+        "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+        "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
+      ];
+      return `${THAI_MONTHS_SHORT[m]} ${y}`;
+    }
+    return `งวดที่ ${index + 1}`;
+  } catch {
+    return `งวดที่ ${index + 1}`;
+  }
 }
 
 export function EditServiceRecipientClient({
@@ -60,8 +85,14 @@ export function EditServiceRecipientClient({
     row.fee_amount ? row.fee_amount.toLocaleString("th-TH") : ""
   );
 
+  // Installment State
+  const initialPaid = parsePaidInstallments(row.cancel_reason);
+  const [paidInstallments, setPaidInstallments] = useState<number>(initialPaid);
+
   // Cancellation Reason State
-  const [cancelReason, setCancelReason] = useState(row.cancel_reason ?? "");
+  const [cancelReason, setCancelReason] = useState(
+    row.status === "ยกเลิกงาน" ? row.cancel_reason ?? "" : ""
+  );
 
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -74,6 +105,10 @@ export function EditServiceRecipientClient({
         ? `แบบประจำ(รายเดือน) ${workMonth}`
         : "แบบประจำ(รายเดือน)"
       : workFormat;
+
+  const durationMatch = computedWorkFormat.match(/(\d+)\s*เดือน/);
+  const contractDuration = durationMatch ? parseInt(durationMatch[1], 10) : 1;
+  const isMonthlyContract = computedWorkFormat.includes("รายเดือน") && contractDuration > 1;
 
   // Calculations for Won: ยอดที่ผู้ดูแลได้รับ = ยอดสุทธิทั้งหมด - ค่าดำเนินการ
   const isWon = status === "Won";
@@ -148,6 +183,7 @@ export function EditServiceRecipientClient({
           formData.append("net_total", String(netTotal));
           formData.append("fee_amount", String(feeAmount));
           formData.append("caregiver_net", String(caregiverNet));
+          formData.append("paid_installments", String(paidInstallments));
         }
 
         if (isCancelled) {
@@ -228,6 +264,14 @@ export function EditServiceRecipientClient({
                       {formatCurrency(caregiverNet)} ฿
                     </span>
                   </div>
+                  {isMonthlyContract && (
+                    <div className="flex justify-between pt-1 border-t border-dashed border-neutral-200 dark:border-neutral-800">
+                      <span className="text-neutral-500">สถานะการเก็บเงิน:</span>
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                        เก็บแล้ว {paidInstallments} จาก {contractDuration} งวด
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -467,6 +511,165 @@ export function EditServiceRecipientClient({
                   <span className="text-xs font-normal text-emerald-800 dark:text-emerald-300">บาท (ยอดสุทธิทั้งหมด − ค่าดำเนินการ)</span>
                 </div>
               </div>
+
+              {/* Installment Payment Tracking Table (for multi-month contracts) */}
+              {isMonthlyContract && (
+                <div className="mt-2 pt-4 border-t border-emerald-200/80 dark:border-emerald-800/60 sm:col-span-2 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
+                        <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        <span>ตารางติดตามการเก็บเงินตามงวดสัญญา ({contractDuration} งวด)</span>
+                      </h4>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                        แสดงข้อมูลทางการเงินในแต่ละงวด และบันทึกสถานะการรับเงินจริงเพื่อนำไปสรุปผลบน Slide สรุปยอด
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                        เก็บเงินแล้ว {paidInstallments} จาก {contractDuration} งวด
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Summary Bar */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-800/60 dark:bg-emerald-950/30">
+                      <div className="font-semibold text-emerald-800 dark:text-emerald-300 mb-1 flex items-center justify-between">
+                        <span>🟢 ยอดที่เก็บเงินแล้วจริง (Realized - {paidInstallments} งวด):</span>
+                        <span className="font-bold font-mono text-emerald-900 dark:text-emerald-200">
+                          {formatCurrency(netTotal * paidInstallments)} ฿
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-emerald-700 dark:text-emerald-400">
+                        <span>ค่าดำเนินการ: {formatCurrency(feeAmount * paidInstallments)} ฿</span>
+                        <span>ผู้ดูแล: {formatCurrency(caregiverNet * paidInstallments)} ฿</span>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-800/60 dark:bg-amber-950/30">
+                      <div className="font-semibold text-amber-800 dark:text-amber-300 mb-1 flex items-center justify-between">
+                        <span>🟠 ยอดรอเก็บในอนาคต (Pending - {Math.max(0, contractDuration - paidInstallments)} งวด):</span>
+                        <span className="font-bold font-mono text-amber-900 dark:text-amber-200">
+                          {formatCurrency(netTotal * Math.max(0, contractDuration - paidInstallments))} ฿
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-amber-700 dark:text-amber-400">
+                        <span>ค่าดำเนินการ: {formatCurrency(feeAmount * Math.max(0, contractDuration - paidInstallments))} ฿</span>
+                        <span>ผู้ดูแล: {formatCurrency(caregiverNet * Math.max(0, contractDuration - paidInstallments))} ฿</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Installment Table */}
+                  <div className="overflow-x-auto rounded-xl border border-emerald-200 dark:border-emerald-800/80 bg-white dark:bg-neutral-900 shadow-2xs">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-emerald-50/80 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 font-semibold border-b border-emerald-200 dark:border-emerald-800">
+                        <tr>
+                          <th className="py-2.5 px-3">งวดที่ / เดือน</th>
+                          <th className="py-2.5 px-3 text-right">1. ยอดสุทธิทั้งหมด</th>
+                          <th className="py-2.5 px-3 text-right">2. ค่าดำเนินการ</th>
+                          <th className="py-2.5 px-3 text-right">3. ยอดที่ผู้ดูแลได้รับ</th>
+                          <th className="py-2.5 px-3 text-center">สถานะการเก็บเงิน</th>
+                          <th className="py-2.5 px-3 text-center">การจัดการ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
+                        {Array.from({ length: contractDuration }, (_, i) => {
+                          const isPaid = i < paidInstallments;
+                          const monthLabel = getInstallmentMonth(serviceDate, i);
+                          return (
+                            <tr
+                              key={i}
+                              className={isPaid ? "bg-emerald-50/20 dark:bg-emerald-950/20" : "bg-neutral-50/20 dark:bg-neutral-900/40"}
+                            >
+                              <td className="py-2.5 px-3 font-semibold text-neutral-800 dark:text-neutral-200">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-200 dark:bg-neutral-800 text-[11px] font-bold">
+                                    {i + 1}
+                                  </span>
+                                  <span>{monthLabel}</span>
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-semibold text-neutral-900 dark:text-neutral-100">
+                                {formatCurrency(netTotal)} ฿
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-semibold text-amber-600 dark:text-amber-400">
+                                {formatCurrency(feeAmount)} ฿
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                {formatCurrency(caregiverNet)} ฿
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                {isPaid ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-900/70 dark:text-emerald-300">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    เก็บเงินแล้ว (Realized)
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-900/70 dark:text-amber-300">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                    รอเก็บเงิน (Pending)
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isPaid) {
+                                      setPaidInstallments(i);
+                                    } else {
+                                      setPaidInstallments(i + 1);
+                                    }
+                                  }}
+                                  className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all shadow-2xs ${
+                                    isPaid
+                                      ? "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                                      : "bg-emerald-600 text-white hover:bg-emerald-700"
+                                  }`}
+                                >
+                                  {isPaid ? "เปลี่ยนเป็นรอเก็บ" : "ทำเครื่องหมายว่าเก็บแล้ว"}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Quick Action Buttons */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                    <span>คลิกปุ่มในคอลัมน์การจัดการ เพื่ออัปเดตสถานะการเก็บเงินแต่ละงวด</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaidInstallments(contractDuration)}
+                        className="text-[11px] font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+                      >
+                        เก็บครบทุกงวด
+                      </button>
+                      <span>•</span>
+                      <button
+                        type="button"
+                        onClick={() => setPaidInstallments(1)}
+                        className="text-[11px] font-medium text-neutral-600 hover:underline dark:text-neutral-400"
+                      >
+                        เก็บเฉพาะงวดแรก
+                      </button>
+                      <span>•</span>
+                      <button
+                        type="button"
+                        onClick={() => setPaidInstallments(0)}
+                        className="text-[11px] font-medium text-amber-600 hover:underline dark:text-amber-400"
+                      >
+                        ยังไม่เก็บทุกงวด
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -26,7 +26,17 @@ export async function createServiceRecipient(formData: FormData) {
   const fee_percent = isWon ? numberOrNull(formData, "fee_percent") : null;
   const fee_amount = isWon ? numberOrNull(formData, "fee_amount") : null;
   const caregiver_net = isWon ? numberOrNull(formData, "caregiver_net") : null;
-  const cancel_reason = isCancelled ? textOrNull(formData, "cancel_reason") : null;
+  const rawPaid = formData.get("paid_installments");
+  let paid_installments = 1;
+  if (rawPaid !== null && rawPaid !== "") {
+    const num = Number(rawPaid);
+    if (!isNaN(num) && num >= 0) paid_installments = num;
+  }
+  const cancel_reason = isCancelled
+    ? textOrNull(formData, "cancel_reason")
+    : isWon
+      ? `[PAID:${paid_installments}]`
+      : null;
 
   const { error } = await supabase.from("service_recipients").insert({
     job_code: textOrNull(formData, "job_code"),
@@ -59,7 +69,18 @@ export async function updateServiceRecipient(id: string, formData: FormData) {
   const fee_percent = isWon ? numberOrNull(formData, "fee_percent") : null;
   const fee_amount = isWon ? numberOrNull(formData, "fee_amount") : null;
   const caregiver_net = isWon ? numberOrNull(formData, "caregiver_net") : null;
-  const cancel_reason = isCancelled ? textOrNull(formData, "cancel_reason") : null;
+
+  const rawPaid = formData.get("paid_installments");
+  let paid_installments = 1;
+  if (rawPaid !== null && rawPaid !== "") {
+    const num = Number(rawPaid);
+    if (!isNaN(num) && num >= 0) paid_installments = num;
+  }
+  const cancel_reason = isCancelled
+    ? textOrNull(formData, "cancel_reason")
+    : isWon
+      ? `[PAID:${paid_installments}]`
+      : null;
 
   const { error } = await supabase
     .from("service_recipients")

@@ -483,6 +483,7 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
     jobCode: string;
     jobType: string;
     duration: number;
+    paidInstallments: number;
     netTotal: number;
     feeAmount: number;
     caregiverNet: number;
@@ -494,18 +495,19 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
 
   if (!wonFinance.items || wonFinance.items.length === 0) {
     const defaultData = [
-      { code: "SR-2605-0044", type: "ไป-กลับ", net: 1200, fee: 300, cg: 900, m: 4, dur: 1, st: "เสร็จสิ้น" },
-      { code: "SR-2607-0049", type: "รายวัน", net: 27800, fee: 6290, cg: 21510, m: 6, dur: 1, st: "เสร็จสิ้น" },
-      { code: "SR-2608-0057", type: "รายวัน", net: 22000, fee: 2640, cg: 19360, m: 7, dur: 1, st: "เสร็จสิ้น" },
-      { code: "SR-2608-0061", type: "รายวัน", net: 6000, fee: 720, cg: 5280, m: 8, dur: 1, st: "เสร็จสิ้น" },
-      { code: "SR-2609-0066", type: "รายเดือน (3 เดือน)", net: 21900, fee: 2628, cg: 19272, m: 8, dur: 3, st: "ดำเนินการอยู่" },
-      { code: "SR-2609-0070", type: "ไป-กลับ", net: 1700, fee: 300, cg: 1400, m: 8, dur: 1, st: "เสร็จสิ้น" },
-      { code: "SR-2609-0067", type: "ไป-กลับ", net: 3600, fee: 540, cg: 3060, m: 8, dur: 1, st: "เสร็จสิ้น" },
+      { code: "SR-2605-0044", type: "ไป-กลับ", net: 1200, fee: 300, cg: 900, m: 4, dur: 1, paid: 1, st: "เสร็จสิ้น" },
+      { code: "SR-2607-0049", type: "รายวัน", net: 27800, fee: 6290, cg: 21510, m: 6, dur: 1, paid: 1, st: "เสร็จสิ้น" },
+      { code: "SR-2608-0057", type: "รายวัน", net: 22000, fee: 2640, cg: 19360, m: 7, dur: 1, paid: 1, st: "เสร็จสิ้น" },
+      { code: "SR-2608-0061", type: "รายวัน", net: 6000, fee: 720, cg: 5280, m: 8, dur: 1, paid: 1, st: "เสร็จสิ้น" },
+      { code: "SR-2609-0066", type: "รายเดือน (3 เดือน)", net: 21900, fee: 2628, cg: 19272, m: 8, dur: 3, paid: 1, st: "ดำเนินการอยู่" },
+      { code: "SR-2609-0070", type: "ไป-กลับ", net: 1700, fee: 300, cg: 1400, m: 8, dur: 1, paid: 1, st: "เสร็จสิ้น" },
+      { code: "SR-2609-0067", type: "ไป-กลับ", net: 3600, fee: 540, cg: 3060, m: 8, dur: 1, paid: 1, st: "เสร็จสิ้น" },
     ];
     projRows = defaultData.map((d) => ({
       jobCode: d.code,
       jobType: d.type,
       duration: d.dur,
+      paidInstallments: d.paid,
       netTotal: d.net,
       feeAmount: d.fee,
       caregiverNet: d.cg,
@@ -537,27 +539,32 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
       } else {
         jobType = fmt || "ไป-กลับ";
       }
+      const paidInstallments = Math.max(0, Math.min(duration, item.paidInstallments ?? 1));
       const monthlyValues: MonthVal[] = Array.from({ length: 12 }, (_, mIdx) => {
-        if (mIdx === startMonth) return { amount: item.feeAmount, type: "realized" };
-        if (mIdx > startMonth && mIdx < startMonth + duration && mIdx < 12) return { amount: item.feeAmount, type: "pending" };
+        const monthOffset = mIdx - startMonth;
+        if (monthOffset >= 0 && monthOffset < duration) {
+          if (monthOffset < paidInstallments) return { amount: item.feeAmount, type: "realized" };
+          return { amount: item.feeAmount, type: "pending" };
+        }
         return { amount: 0, type: "none" };
       });
       return {
         jobCode: item.jobCode,
         jobType,
         duration,
+        paidInstallments,
         netTotal: item.netTotal,
         feeAmount: item.feeAmount,
         caregiverNet: item.caregiverNet,
         monthlyValues,
-        status: duration > 1 ? "ดำเนินการอยู่" : "เสร็จสิ้น",
+        status: paidInstallments >= duration ? "เสร็จสิ้น" : paidInstallments > 0 ? "ดำเนินการอยู่" : "รอดำเนินการ",
       };
     });
   }
 
-  const totalContractNet = projRows.reduce((s, r) => s + r.netTotal * (r.duration || 1), 0);
-  const totalContractFee = projRows.reduce((s, r) => s + r.feeAmount * (r.duration || 1), 0);
-  const totalContractCaregiverNet = projRows.reduce((s, r) => s + r.caregiverNet * (r.duration || 1), 0);
+  const realizedNet = projRows.reduce((s, r) => s + r.netTotal * (r.paidInstallments ?? 1), 0);
+  const realizedFee = projRows.reduce((s, r) => s + r.feeAmount * (r.paidInstallments ?? 1), 0);
+  const realizedCaregiverNet = projRows.reduce((s, r) => s + r.caregiverNet * (r.paidInstallments ?? 1), 0);
 
   const contractCountByMonth = Array.from({ length: 12 }, (_, m) =>
     projRows.filter((r) => r.monthlyValues[m].type !== "none").length
@@ -579,18 +586,18 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
     slide,
     [
       {
-        label: "ยอดสุทธิ (Total NET)",
-        value: `${Math.round(totalContractNet).toLocaleString("th-TH")} ฿`,
+        label: "ยอดสุทธิรับแล้ว (Realized NET)",
+        value: `${Math.round(realizedNet).toLocaleString("th-TH")} ฿`,
         color: C.statusGood,
       },
       {
-        label: "ค่าดำเนินการ (Total Fee)",
-        value: `${Math.round(totalContractFee).toLocaleString("th-TH")} ฿`,
+        label: "ค่าดำเนินการรับแล้ว (Realized Fee)",
+        value: `${Math.round(realizedFee).toLocaleString("th-TH")} ฿`,
         color: C.statusWarning,
       },
       {
-        label: "ยอดผู้ดูแลรับ (Caregiver Net)",
-        value: `${Math.round(totalContractCaregiverNet).toLocaleString("th-TH")} ฿`,
+        label: "ยอดผู้ดูแลจ่ายแล้ว (Caregiver Net)",
+        value: `${Math.round(realizedCaregiverNet).toLocaleString("th-TH")} ฿`,
         color: C.accent,
       },
       {

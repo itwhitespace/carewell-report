@@ -680,6 +680,18 @@ export type WonFinanceMonthlyStat = {
   effectiveFeePct: number | null;
 };
 
+export function parsePaidInstallments(val: string | null | undefined): number {
+  if (!val) return 1;
+  const match = val.match(/\[PAID:(\d+)\]/);
+  if (match) return parseInt(match[1], 10);
+  const num = parseInt(val, 10);
+  return isNaN(num) ? 1 : Math.max(0, num);
+}
+
+export function formatPaidInstallments(paidCount: number): string {
+  return `[PAID:${Math.max(0, paidCount)}]`;
+}
+
 export type WonDealItem = {
   id?: string;
   jobCode: string;
@@ -691,6 +703,7 @@ export type WonDealItem = {
   feeAmount: number;
   caregiverNet: number;
   feePercent: number | null;
+  paidInstallments?: number;
 };
 
 export type WonFinanceStats = {
@@ -759,6 +772,7 @@ export function monthlyWonFinance(recipients: ServiceRecipientRow[]): WonFinance
       feeAmount: fee,
       caregiverNet: cg,
       feePercent,
+      paidInstallments: parsePaidInstallments(r.cancel_reason),
     });
 
     if (!r.service_date) continue;

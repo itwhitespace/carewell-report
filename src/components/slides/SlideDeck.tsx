@@ -736,6 +736,7 @@ type ProjectionRow = {
   jobCode: string;
   jobType: string;
   duration: number;
+  paidInstallments: number;
   netTotal: number;
   feeAmount: number;
   caregiverNet: number;
@@ -751,6 +752,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         jobCode: "SR-2605-0044",
         jobType: "ไป-กลับ",
         duration: 1,
+        paidInstallments: 1,
         netTotal: 1200,
         feeAmount: 300,
         caregiverNet: 900,
@@ -764,6 +766,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         jobCode: "SR-2607-0049",
         jobType: "รายวัน",
         duration: 1,
+        paidInstallments: 1,
         netTotal: 27800,
         feeAmount: 6290,
         caregiverNet: 21510,
@@ -777,6 +780,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         jobCode: "SR-2608-0057",
         jobType: "รายวัน",
         duration: 1,
+        paidInstallments: 1,
         netTotal: 22000,
         feeAmount: 2640,
         caregiverNet: 19360,
@@ -790,6 +794,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         jobCode: "SR-2608-0061",
         jobType: "รายวัน",
         duration: 1,
+        paidInstallments: 1,
         netTotal: 6000,
         feeAmount: 720,
         caregiverNet: 5280,
@@ -803,6 +808,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         jobCode: "SR-2609-0066",
         jobType: "รายเดือน (3 เดือน)",
         duration: 3,
+        paidInstallments: 1,
         netTotal: 21900,
         feeAmount: 2628,
         caregiverNet: 19272,
@@ -820,6 +826,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         jobCode: "SR-2609-0070",
         jobType: "ไป-กลับ",
         duration: 1,
+        paidInstallments: 1,
         netTotal: 1700,
         feeAmount: 300,
         caregiverNet: 1400,
@@ -833,6 +840,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         jobCode: "SR-2609-0067",
         jobType: "ไป-กลับ",
         duration: 1,
+        paidInstallments: 1,
         netTotal: 3600,
         feeAmount: 540,
         caregiverNet: 3060,
@@ -873,23 +881,29 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
       jobType = fmt || "ไป-กลับ";
     }
 
+    const paidInstallments = Math.max(0, Math.min(duration, item.paidInstallments ?? 1));
+
     const monthlyValues: MonthValue[] = Array.from({ length: 12 }, (_, m) => {
-      if (m === startMonth) {
-        return { amount: item.feeAmount, type: "realized" };
-      } else if (m > startMonth && m < startMonth + duration && m < 12) {
-        return { amount: item.feeAmount, type: "pending" };
+      const monthOffset = m - startMonth;
+      if (monthOffset >= 0 && monthOffset < duration) {
+        if (monthOffset < paidInstallments) {
+          return { amount: item.feeAmount, type: "realized" };
+        } else {
+          return { amount: item.feeAmount, type: "pending" };
+        }
       }
       return { amount: 0, type: "none" };
     });
 
     const status: "เสร็จสิ้น" | "ดำเนินการอยู่" | "รอดำเนินการ" =
-      duration > 1 ? "ดำเนินการอยู่" : "เสร็จสิ้น";
+      paidInstallments >= duration ? "เสร็จสิ้น" : paidInstallments > 0 ? "ดำเนินการอยู่" : "รอดำเนินการ";
 
     return {
       id: item.id,
       jobCode: item.jobCode,
       jobType,
       duration,
+      paidInstallments,
       netTotal: item.netTotal,
       feeAmount: item.feeAmount,
       caregiverNet: item.caregiverNet,
@@ -907,10 +921,15 @@ const THAI_MONTHS_SHORT = [
 function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
   const rows = buildProjectionRows(wonFinance);
 
-  // Grand contract totals (multiplying by contract duration for monthly contracts)
-  const totalContractNet = rows.reduce((s, r) => s + r.netTotal * (r.duration || 1), 0);
-  const totalContractFee = rows.reduce((s, r) => s + r.feeAmount * (r.duration || 1), 0);
-  const totalContractCaregiverNet = rows.reduce((s, r) => s + r.caregiverNet * (r.duration || 1), 0);
+  // Realized totals (เฉพาะงวดที่เก็บเงินแล้วจริง ตามที่ผู้ใช้ต้องการ)
+  const realizedNet = rows.reduce((s, r) => s + r.netTotal * (r.paidInstallments ?? 1), 0);
+  const realizedFee = rows.reduce((s, r) => s + r.feeAmount * (r.paidInstallments ?? 1), 0);
+  const realizedCaregiverNet = rows.reduce((s, r) => s + r.caregiverNet * (r.paidInstallments ?? 1), 0);
+
+  // Pending totals (งวดที่ยังรอรับในอนาคต)
+  const pendingNet = rows.reduce((s, r) => s + r.netTotal * Math.max(0, (r.duration || 1) - (r.paidInstallments ?? 1)), 0);
+  const pendingFee = rows.reduce((s, r) => s + r.feeAmount * Math.max(0, (r.duration || 1) - (r.paidInstallments ?? 1)), 0);
+  const pendingCaregiverNet = rows.reduce((s, r) => s + r.caregiverNet * Math.max(0, (r.duration || 1) - (r.paidInstallments ?? 1)), 0);
 
   // Contract count by month
   const contractCountByMonth = Array.from({ length: 12 }, (_, m) =>
@@ -940,23 +959,26 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
       center={false}
       wide={true}
     >
-      {/* Stat Tiles */}
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* Stat Tiles: แสดงยอดรวมที่เกิดขึ้นจริงแล้ว (Realized) ตามที่ผู้ใช้ระบุ */}
+      <div className="mb-4 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
         <StatTile
-          label="ยอดสุทธิ (Total NET)"
-          value={`${Math.round(totalContractNet).toLocaleString("th-TH")} ฿`}
+          label="ยอดสุทธิรับแล้ว (Realized NET)"
+          value={`${Math.round(realizedNet).toLocaleString("th-TH")} ฿`}
+          delta={pendingNet > 0 ? `+ รอรับอีก ${Math.round(pendingNet).toLocaleString("th-TH")} ฿` : undefined}
           accent={palette.statusGood}
           glow="green"
         />
         <StatTile
-          label="ค่าดำเนินการ (Total Fee)"
-          value={`${Math.round(totalContractFee).toLocaleString("th-TH")} ฿`}
+          label="ค่าดำเนินการรับแล้ว (Realized Fee)"
+          value={`${Math.round(realizedFee).toLocaleString("th-TH")} ฿`}
+          delta={pendingFee > 0 ? `+ รอรับอีก ${Math.round(pendingFee).toLocaleString("th-TH")} ฿` : undefined}
           accent="#F59E0B"
           glow="orange"
         />
         <StatTile
-          label="ยอดผู้ดูแลรับ (Caregiver Net)"
-          value={`${Math.round(totalContractCaregiverNet).toLocaleString("th-TH")} ฿`}
+          label="ยอดผู้ดูแลจ่ายแล้ว (Caregiver Net)"
+          value={`${Math.round(realizedCaregiverNet).toLocaleString("th-TH")} ฿`}
+          delta={pendingCaregiverNet > 0 ? `+ รอจ่ายอีก ${Math.round(pendingCaregiverNet).toLocaleString("th-TH")} ฿` : undefined}
           accent={palette.accent}
           glow="green"
         />
@@ -971,41 +993,41 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
       {/* 12-Month Projection Table */}
       <div className="w-full overflow-hidden rounded-2xl border border-neutral-800/90 bg-[#0b101c]/95 shadow-2xl backdrop-blur-lg">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1550px] border-collapse text-left">
+          <table className="w-full min-w-[1300px] border-collapse text-left">
             <thead>
-              <tr className="border-b border-emerald-500/30 bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-700 text-white font-bold tracking-wide text-xs sm:text-sm">
-                <th className="px-3.5 py-3 whitespace-nowrap text-left">
+              <tr className="border-b border-emerald-500/30 bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-700 text-white font-bold tracking-wide text-xs">
+                <th className="px-2.5 py-2 whitespace-nowrap text-left">
                   <div>รหัสงาน</div>
-                  <div className="text-[10px] font-normal opacity-85">(Job ID)</div>
+                  <div className="text-[9px] font-normal opacity-85">(Job ID)</div>
                 </th>
-                <th className="px-3 py-3 whitespace-nowrap text-left">
+                <th className="px-2.5 py-2 whitespace-nowrap text-left">
                   <div>รูปแบบงาน</div>
-                  <div className="text-[10px] font-normal opacity-85">(Job Type)</div>
+                  <div className="text-[9px] font-normal opacity-85">(Job Type)</div>
                 </th>
-                <th className="px-3 py-3 whitespace-nowrap text-right">
+                <th className="px-2.5 py-2 whitespace-nowrap text-right">
                   <div>ยอดสุทธิ</div>
-                  <div className="text-[10px] font-normal opacity-85">(NET)</div>
+                  <div className="text-[9px] font-normal opacity-85">(NET)</div>
                 </th>
-                <th className="px-3 py-3 whitespace-nowrap text-right">
+                <th className="px-2.5 py-2 whitespace-nowrap text-right">
                   <div>ค่าดำเนินการ</div>
-                  <div className="text-[10px] font-normal opacity-85">(Fee)</div>
+                  <div className="text-[9px] font-normal opacity-85">(Fee)</div>
                 </th>
-                <th className="px-3 py-3 whitespace-nowrap text-right">
+                <th className="px-2.5 py-2 whitespace-nowrap text-right">
                   <div>ยอดผู้ดูแลรับ</div>
-                  <div className="text-[10px] font-normal opacity-85">(Caregiver Net)</div>
+                  <div className="text-[9px] font-normal opacity-85">(Caregiver Net)</div>
                 </th>
                 {THAI_MONTHS_SHORT.map((m) => (
-                  <th key={m} className="px-1.5 py-3 whitespace-nowrap text-center text-xs sm:text-sm font-bold">
+                  <th key={m} className="px-1 py-2 whitespace-nowrap text-center text-xs font-bold">
                     {m}
                   </th>
                 ))}
-                <th className="px-3.5 py-3 whitespace-nowrap text-center">
+                <th className="px-2.5 py-2 whitespace-nowrap text-center">
                   <div>สถานะสัญญา</div>
-                  <div className="text-[10px] font-normal opacity-85">(Status)</div>
+                  <div className="text-[9px] font-normal opacity-85">(Status)</div>
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-800/80 text-neutral-200 text-sm">
+            <tbody className="divide-y divide-neutral-800/80 text-neutral-200 text-xs">
               {rows.map((r, idx) => (
                 <tr
                   key={r.id || idx}
@@ -1013,65 +1035,65 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                     idx % 2 === 0 ? "bg-[#0c121e]/70" : "bg-[#101726]/70"
                   }`}
                 >
-                  <td className="px-3.5 py-3 font-bold text-white whitespace-nowrap text-sm sm:text-base">
+                  <td className="px-2.5 py-1.5 font-bold text-white whitespace-nowrap text-xs sm:text-sm">
                     {r.jobCode}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    <span className="inline-block rounded-lg bg-neutral-800/90 border border-neutral-700 px-2.5 py-1 text-xs sm:text-sm font-semibold text-neutral-200">
+                  <td className="px-2.5 py-1.5 whitespace-nowrap">
+                    <span className="inline-block rounded-md bg-neutral-800/90 border border-neutral-700 px-2 py-0.5 text-[11px] font-semibold text-neutral-200">
                       {r.jobType}
                     </span>
                   </td>
-                  <td className="px-3 py-3 font-mono font-bold text-white text-right whitespace-nowrap text-sm sm:text-base">
+                  <td className="px-2.5 py-1.5 font-mono font-bold text-white text-right whitespace-nowrap text-xs sm:text-sm">
                     {r.netTotal.toLocaleString("th-TH")}
                   </td>
-                  <td className="px-3 py-3 font-mono text-right whitespace-nowrap">
-                    <div className="font-bold text-amber-400 text-sm sm:text-base">
+                  <td className="px-2.5 py-1.5 font-mono text-right whitespace-nowrap">
+                    <div className="font-bold text-amber-400 text-xs sm:text-sm">
                       {r.feeAmount.toLocaleString("th-TH")}
                     </div>
-                    <div className="text-[11px] font-medium text-amber-300/80">
+                    <div className="text-[10px] font-medium text-amber-300/80">
                       ({r.netTotal > 0 ? ((r.feeAmount / r.netTotal) * 100).toFixed(1) : "0"}%)
                     </div>
                   </td>
-                  <td className="px-3 py-3 font-mono font-bold text-emerald-400 text-right whitespace-nowrap text-sm sm:text-base">
+                  <td className="px-2.5 py-1.5 font-mono font-bold text-emerald-400 text-right whitespace-nowrap text-xs sm:text-sm">
                     {r.caregiverNet.toLocaleString("th-TH")}
                   </td>
                   {r.monthlyValues.map((mv, mIdx) => (
-                    <td key={mIdx} className="px-1 py-3 text-center whitespace-nowrap">
+                    <td key={mIdx} className="px-0.5 py-1.5 text-center whitespace-nowrap">
                       {mv.type === "realized" ? (
-                        <div className="inline-flex min-w-[84px] flex-col items-center justify-center rounded-xl bg-emerald-950/80 border border-emerald-500/60 px-2 py-1 shadow-sm transition-transform hover:scale-105">
-                          <span className="font-mono font-extrabold text-xs sm:text-sm text-emerald-300">
+                        <div className="inline-flex min-w-[70px] flex-col items-center justify-center rounded-lg bg-emerald-950/80 border border-emerald-500/60 px-1.5 py-0.5 shadow-xs transition-transform hover:scale-105">
+                          <span className="font-mono font-extrabold text-xs text-emerald-300">
                             {mv.amount.toLocaleString("th-TH")}
                           </span>
-                          <span className="text-[10px] sm:text-xs font-semibold text-emerald-400">
+                          <span className="text-[9px] font-semibold text-emerald-400">
                             (รับแล้ว)
                           </span>
                         </div>
                       ) : mv.type === "pending" ? (
-                        <div className="inline-flex min-w-[84px] flex-col items-center justify-center rounded-xl bg-amber-950/80 border border-amber-500/60 px-2 py-1 shadow-sm transition-transform hover:scale-105">
-                          <span className="font-mono font-extrabold text-xs sm:text-sm text-amber-300">
+                        <div className="inline-flex min-w-[70px] flex-col items-center justify-center rounded-lg bg-amber-950/80 border border-amber-500/60 px-1.5 py-0.5 shadow-xs transition-transform hover:scale-105">
+                          <span className="font-mono font-extrabold text-xs text-amber-300">
                             {mv.amount.toLocaleString("th-TH")}
                           </span>
-                          <span className="text-[10px] sm:text-xs font-semibold text-amber-400">
+                          <span className="text-[9px] font-semibold text-amber-400">
                             (รอรับ)
                           </span>
                         </div>
                       ) : (
-                        <span className="font-mono text-neutral-600 text-base font-semibold">-</span>
+                        <span className="font-mono text-neutral-600 text-xs font-semibold">-</span>
                       )}
                     </td>
                   ))}
-                  <td className="px-3.5 py-3 text-center whitespace-nowrap">
+                  <td className="px-2.5 py-1.5 text-center whitespace-nowrap">
                     {r.status === "ดำเนินการอยู่" ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950 border border-emerald-500/70 px-3 py-1 text-xs sm:text-sm font-bold text-emerald-300 shadow-md">
-                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950 border border-emerald-500/70 px-2.5 py-0.5 text-xs font-bold text-emerald-300 shadow-xs">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         ดำเนินการอยู่
                       </span>
                     ) : r.status === "เสร็จสิ้น" ? (
-                      <span className="inline-flex items-center rounded-full bg-neutral-800/90 border border-neutral-700 px-3.5 py-1 text-xs sm:text-sm font-medium text-neutral-300">
+                      <span className="inline-flex items-center rounded-full bg-neutral-800/90 border border-neutral-700 px-2.5 py-0.5 text-xs font-medium text-neutral-300">
                         เสร็จสิ้น
                       </span>
                     ) : (
-                      <span className="inline-flex items-center rounded-full bg-amber-950/90 border border-amber-700 px-3.5 py-1 text-xs sm:text-sm font-medium text-amber-300">
+                      <span className="inline-flex items-center rounded-full bg-amber-950/90 border border-amber-700 px-2.5 py-0.5 text-xs font-medium text-amber-300">
                         รอดำเนินการ
                       </span>
                     )}
@@ -1081,57 +1103,57 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
             </tbody>
             <tfoot>
               {/* Row 0: จำนวนสัญญาในแต่ละเดือน (Active Contracts) */}
-              <tr className="border-t-2 border-cyan-500/40 bg-cyan-950/30 text-cyan-300 text-sm">
-                <td colSpan={2} className="px-3.5 py-3 text-left font-bold whitespace-nowrap text-sm sm:text-base">
-                  <div className="inline-flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-xs" />
+              <tr className="border-t-2 border-cyan-500/40 bg-cyan-950/30 text-cyan-300 text-xs sm:text-sm">
+                <td colSpan={2} className="px-2.5 py-2 text-left font-bold whitespace-nowrap text-xs sm:text-sm">
+                  <div className="inline-flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-xs" />
                     <div>
                       <div>จำนวนสัญญาแต่ละเดือน</div>
-                      <div className="text-[10px] font-normal opacity-85">(Active Contracts)</div>
+                      <div className="text-[9px] font-normal opacity-85">(Active Contracts)</div>
                     </div>
                   </div>
                 </td>
-                <td className="px-3 py-3 font-mono text-center text-neutral-500 whitespace-nowrap text-sm sm:text-base">
+                <td className="px-2.5 py-2 font-mono text-center text-neutral-500 whitespace-nowrap text-xs sm:text-sm">
                   -
                 </td>
-                <td className="px-3 py-3 font-mono text-center text-neutral-500 whitespace-nowrap text-sm sm:text-base">
+                <td className="px-2.5 py-2 font-mono text-center text-neutral-500 whitespace-nowrap text-xs sm:text-sm">
                   -
                 </td>
-                <td className="px-3 py-3 font-mono text-center text-neutral-500 whitespace-nowrap text-sm sm:text-base">
+                <td className="px-2.5 py-2 font-mono text-center text-neutral-500 whitespace-nowrap text-xs sm:text-sm">
                   -
                 </td>
                 {contractCountByMonth.map((cnt, mIdx) => (
-                  <td key={mIdx} className="px-1 py-3 font-mono text-center whitespace-nowrap">
+                  <td key={mIdx} className="px-0.5 py-2 font-mono text-center whitespace-nowrap">
                     {cnt > 0 ? (
-                      <span className="inline-block rounded-md bg-cyan-950/80 border border-cyan-500/50 px-2 py-0.5 font-extrabold text-xs sm:text-sm text-cyan-300">
+                      <span className="inline-block rounded-md bg-cyan-950/80 border border-cyan-500/50 px-1.5 py-0.5 font-extrabold text-[11px] text-cyan-300">
                         {cnt} สัญญา
                       </span>
                     ) : (
-                      <span className="text-neutral-600 font-semibold text-base">-</span>
+                      <span className="text-neutral-600 font-semibold text-xs">-</span>
                     )}
                   </td>
                 ))}
-                <td className="px-3.5 py-3 text-center text-neutral-500 font-medium">-</td>
+                <td className="px-2.5 py-2 text-center text-neutral-500 font-medium text-xs">-</td>
               </tr>
 
               {/* Row 1: รวมรายได้คาดการณ์ทั้งหมด (Total Expected) */}
-              <tr className="border-t-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-[#0d2e24] to-teal-950 font-black text-white text-base">
-                <td colSpan={2} className="px-3.5 py-3.5 text-left whitespace-nowrap">
-                  <div className="inline-flex items-center gap-2 text-white tracking-wide text-sm sm:text-base font-black">
-                    <span className="text-emerald-400 text-lg">★</span>
+              <tr className="border-t-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-[#0d2e24] to-teal-950 font-black text-white text-xs sm:text-sm">
+                <td colSpan={2} className="px-2.5 py-2 text-left whitespace-nowrap">
+                  <div className="inline-flex items-center gap-1.5 text-white tracking-wide text-xs sm:text-sm font-black">
+                    <span className="text-emerald-400 text-base">★</span>
                     <div>
                       <div>รวมรายได้คาดการณ์ทั้งหมด</div>
-                      <div className="text-[10px] font-normal opacity-85">(Total Expected)</div>
+                      <div className="text-[9px] font-normal opacity-85">(Total Expected)</div>
                     </div>
                   </div>
                 </td>
-                <td className="px-3.5 py-3.5 font-mono text-center text-neutral-500 whitespace-nowrap text-base sm:text-lg">
+                <td className="px-2.5 py-2 font-mono text-center text-neutral-500 whitespace-nowrap text-xs sm:text-sm">
                   -
                 </td>
-                <td className="px-3.5 py-3.5 font-mono text-center text-neutral-500 whitespace-nowrap text-base sm:text-lg">
+                <td className="px-2.5 py-2 font-mono text-center text-neutral-500 whitespace-nowrap text-xs sm:text-sm">
                   -
                 </td>
-                <td className="px-3.5 py-3.5 font-mono text-center text-neutral-500 whitespace-nowrap text-base sm:text-lg">
+                <td className="px-2.5 py-2 font-mono text-center text-neutral-500 whitespace-nowrap text-xs sm:text-sm">
                   -
                 </td>
                 {Array.from({ length: 12 }, (_, mIdx) => {
@@ -1139,12 +1161,12 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                   const pVal = pendingByMonth[mIdx];
                   if (rVal > 0 && pVal > 0) {
                     return (
-                      <td key={mIdx} className="px-1 py-3 font-mono text-center whitespace-nowrap">
+                      <td key={mIdx} className="px-0.5 py-1.5 font-mono text-center whitespace-nowrap">
                         <div className="flex flex-col items-center justify-center gap-0.5">
-                          <span className="font-extrabold text-xs sm:text-sm text-emerald-300 font-mono">
+                          <span className="font-bold text-[11px] text-emerald-300 font-mono">
                             {rVal.toLocaleString("th-TH")}
                           </span>
-                          <span className="font-extrabold text-xs sm:text-sm text-amber-300 font-mono">
+                          <span className="font-bold text-[11px] text-amber-300 font-mono">
                             {pVal.toLocaleString("th-TH")}
                           </span>
                         </div>
@@ -1153,8 +1175,8 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                   }
                   if (rVal > 0) {
                     return (
-                      <td key={mIdx} className="px-1 py-3.5 font-mono text-center whitespace-nowrap">
-                        <span className="font-black text-xs sm:text-sm text-emerald-300 font-mono">
+                      <td key={mIdx} className="px-0.5 py-2 font-mono text-center whitespace-nowrap">
+                        <span className="font-extrabold text-[11px] sm:text-xs text-emerald-300 font-mono">
                           {rVal.toLocaleString("th-TH")}
                         </span>
                       </td>
@@ -1162,20 +1184,20 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                   }
                   if (pVal > 0) {
                     return (
-                      <td key={mIdx} className="px-1 py-3.5 font-mono text-center whitespace-nowrap">
-                        <span className="font-black text-xs sm:text-sm text-amber-300 font-mono">
+                      <td key={mIdx} className="px-0.5 py-2 font-mono text-center whitespace-nowrap">
+                        <span className="font-extrabold text-[11px] sm:text-xs text-amber-300 font-mono">
                           {pVal.toLocaleString("th-TH")}
                         </span>
                       </td>
                     );
                   }
                   return (
-                    <td key={mIdx} className="px-1 py-3.5 font-mono text-center whitespace-nowrap">
-                      <span className="text-neutral-600 font-semibold text-base">-</span>
+                    <td key={mIdx} className="px-0.5 py-2 font-mono text-center whitespace-nowrap">
+                      <span className="text-neutral-600 font-semibold text-xs">-</span>
                     </td>
                   );
                 })}
-                <td className="px-3.5 py-3.5 text-center font-mono text-emerald-300 font-black whitespace-nowrap text-sm sm:text-base">
+                <td className="px-2.5 py-2 text-center font-mono text-emerald-300 font-black whitespace-nowrap text-xs sm:text-sm">
                   {Math.round(totalExpected).toLocaleString("th-TH")}
                 </td>
               </tr>
@@ -1185,20 +1207,20 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
       </div>
 
       {/* หมายเหตุการคำนวณ */}
-      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-800/80 bg-[#0c121e]/80 px-4 py-2.5 text-xs text-neutral-400">
+      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2.5 rounded-lg border border-neutral-800/80 bg-[#0c121e]/80 px-3.5 py-1.5 text-[11px] text-neutral-400">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <span className="font-bold text-neutral-200">📌 หมายเหตุ:</span>
           <span>
-            <b>ยอดในการ์ดด้านบน (Total NET, Total Fee, Caregiver Net)</b>: คำนวณจากยอดรวมตามสัญญาตลอดอายุสัญญา (กรณีสัญญาจ้างรายเดือน คำนวณคูณตามจำนวนเดือนในสัญญา)
+            <b>ยอดในการ์ดด้านบน (Realized NET, Realized Fee, Caregiver Net)</b>: คำนวณจากยอดที่เรียกเก็บเงินจริงแล้วในแต่ละงวดสัญญา (ยอดรอรับในอนาคตแสดงในส่วน + รอรับอีก)
           </span>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="inline-flex items-center gap-1.5 text-emerald-400 font-medium">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1 text-emerald-400 font-medium">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
             สีเขียว = รับชำระแล้ว (Realized)
           </span>
-          <span className="inline-flex items-center gap-1.5 text-amber-400 font-medium">
-            <span className="h-2 w-2 rounded-full bg-amber-400" />
+          <span className="inline-flex items-center gap-1 text-amber-400 font-medium">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
             สีส้ม = รอรับตามงวดสัญญา (Pending)
           </span>
         </div>
