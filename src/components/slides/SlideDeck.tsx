@@ -727,7 +727,8 @@ function WonFinanceSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
 }
 
 type MonthValue = {
-  amount: number;
+  amount: number; // fee amount
+  netAmount: number; // net amount for this job installment
   type: "realized" | "pending" | "none";
 };
 
@@ -757,7 +758,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         feeAmount: 300,
         caregiverNet: 900,
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
-          i === 4 ? { amount: 300, type: "realized" } : { amount: 0, type: "none" }
+          i === 4 ? { amount: 300, netAmount: 1200, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
         status: "เสร็จสิ้น",
       },
@@ -771,7 +772,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         feeAmount: 6290,
         caregiverNet: 21510,
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
-          i === 6 ? { amount: 6290, type: "realized" } : { amount: 0, type: "none" }
+          i === 6 ? { amount: 6290, netAmount: 27800, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
         status: "เสร็จสิ้น",
       },
@@ -785,7 +786,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         feeAmount: 2640,
         caregiverNet: 19360,
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
-          i === 7 ? { amount: 2640, type: "realized" } : { amount: 0, type: "none" }
+          i === 7 ? { amount: 2640, netAmount: 22000, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
         status: "เสร็จสิ้น",
       },
@@ -799,7 +800,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         feeAmount: 720,
         caregiverNet: 5280,
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
-          i === 8 ? { amount: 720, type: "realized" } : { amount: 0, type: "none" }
+          i === 8 ? { amount: 720, netAmount: 6000, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
         status: "เสร็จสิ้น",
       },
@@ -809,15 +810,15 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         jobType: "รายเดือน (3 เดือน)",
         duration: 3,
         paidInstallments: 1,
-        netTotal: 21900,
+        netTotal: 30000,
         feeAmount: 2628,
-        caregiverNet: 19272,
+        caregiverNet: 27372,
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
           i === 8
-            ? { amount: 2628, type: "realized" }
+            ? { amount: 2628, netAmount: 30000, type: "realized" }
             : i === 9 || i === 10
-            ? { amount: 2628, type: "pending" }
-            : { amount: 0, type: "none" }
+            ? { amount: 2628, netAmount: 30000, type: "pending" }
+            : { amount: 0, netAmount: 0, type: "none" }
         ),
         status: "ดำเนินการอยู่",
       },
@@ -831,7 +832,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         feeAmount: 300,
         caregiverNet: 1400,
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
-          i === 8 ? { amount: 300, type: "realized" } : { amount: 0, type: "none" }
+          i === 8 ? { amount: 300, netAmount: 1700, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
         status: "เสร็จสิ้น",
       },
@@ -845,7 +846,21 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         feeAmount: 540,
         caregiverNet: 3060,
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
-          i === 8 ? { amount: 540, type: "realized" } : { amount: 0, type: "none" }
+          i === 8 ? { amount: 540, netAmount: 3600, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
+        ),
+        status: "เสร็จสิ้น",
+      },
+      {
+        id: "8",
+        jobCode: "SR-2610-0085",
+        jobType: "ไป-กลับ",
+        duration: 1,
+        paidInstallments: 1,
+        netTotal: 5100,
+        feeAmount: 612,
+        caregiverNet: 4488,
+        monthlyValues: Array.from({ length: 12 }, (_, i) =>
+          i === 9 ? { amount: 612, netAmount: 5100, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
         status: "เสร็จสิ้น",
       },
@@ -887,12 +902,12 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
       const monthOffset = m - startMonth;
       if (monthOffset >= 0 && monthOffset < duration) {
         if (monthOffset < paidInstallments) {
-          return { amount: item.feeAmount, type: "realized" };
+          return { amount: item.feeAmount, netAmount: item.netTotal, type: "realized" };
         } else {
-          return { amount: item.feeAmount, type: "pending" };
+          return { amount: item.feeAmount, netAmount: item.netTotal, type: "pending" };
         }
       }
-      return { amount: 0, type: "none" };
+      return { amount: 0, netAmount: 0, type: "none" };
     });
 
     const status: "เสร็จสิ้น" | "ดำเนินการอยู่" | "รอดำเนินการ" =
@@ -921,7 +936,7 @@ const THAI_MONTHS_SHORT = [
 function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalette) {
   const rows = buildProjectionRows(wonFinance);
 
-  // Realized totals (เฉพาะงวดที่เก็บเงินแล้วจริง ตามที่ผู้ใช้ต้องการ)
+  // Realized totals (เฉพาะงวดที่เก็บเงินแล้วจริง ตามที่ผู้ใช้ระบุ)
   const realizedNet = rows.reduce((s, r) => s + r.netTotal * (r.paidInstallments ?? 1), 0);
   const realizedFee = rows.reduce((s, r) => s + r.feeAmount * (r.paidInstallments ?? 1), 0);
   const realizedCaregiverNet = rows.reduce((s, r) => s + r.caregiverNet * (r.paidInstallments ?? 1), 0);
@@ -936,19 +951,31 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
     rows.filter((r) => r.monthlyValues[m].type !== "none").length
   );
 
-  // Summary 1: Realized Fee by month
+  // Monthly Net Calculations
+  const realizedNetByMonth = Array.from({ length: 12 }, (_, m) =>
+    rows.reduce((sum, r) => sum + (r.monthlyValues[m].type === "realized" ? r.monthlyValues[m].netAmount : 0), 0)
+  );
+  const totalRealizedNet = realizedNetByMonth.reduce((a, b) => a + b, 0);
+
+  const pendingNetByMonth = Array.from({ length: 12 }, (_, m) =>
+    rows.reduce((sum, r) => sum + (r.monthlyValues[m].type === "pending" ? r.monthlyValues[m].netAmount : 0), 0)
+  );
+  const totalPendingNet = pendingNetByMonth.reduce((a, b) => a + b, 0);
+
+  const totalExpectedNet = totalRealizedNet + totalPendingNet;
+
+  // Monthly Fee Calculations
   const realizedByMonth = Array.from({ length: 12 }, (_, m) =>
     rows.reduce((sum, r) => sum + (r.monthlyValues[m].type === "realized" ? r.monthlyValues[m].amount : 0), 0)
   );
   const totalRealized = realizedByMonth.reduce((a, b) => a + b, 0);
 
-  // Summary 2: Pending Fee by month
   const pendingByMonth = Array.from({ length: 12 }, (_, m) =>
     rows.reduce((sum, r) => sum + (r.monthlyValues[m].type === "pending" ? r.monthlyValues[m].amount : 0), 0)
   );
   const totalPending = pendingByMonth.reduce((a, b) => a + b, 0);
 
-  // Summary 3: Total expected Fee
+  // Total expected Fee
   const totalExpected = totalRealized + totalPending;
 
   return (
@@ -1058,24 +1085,40 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                     {r.caregiverNet.toLocaleString("th-TH")}
                   </td>
                   {r.monthlyValues.map((mv, mIdx) => (
-                    <td key={mIdx} className="px-0.5 py-1.5 text-center whitespace-nowrap">
+                    <td key={mIdx} className="px-0.5 py-1 text-center whitespace-nowrap">
                       {mv.type === "realized" ? (
-                        <div className="inline-flex min-w-[70px] flex-col items-center justify-center rounded-lg bg-emerald-950/80 border border-emerald-500/60 px-1.5 py-0.5 shadow-xs transition-transform hover:scale-105">
-                          <span className="font-mono font-extrabold text-xs text-emerald-300">
-                            {mv.amount.toLocaleString("th-TH")}
+                        <div className="inline-flex min-w-[72px] flex-col items-center justify-center rounded-lg bg-emerald-950/80 border border-emerald-500/60 px-1.5 py-1 shadow-xs transition-transform hover:scale-105">
+                          {/* ยอดสุทธิด้านบน */}
+                          <span className="font-mono font-bold text-xs text-white leading-tight">
+                            {mv.netAmount.toLocaleString("th-TH")}
                           </span>
-                          <span className="text-[9px] font-semibold text-emerald-400">
-                            (รับแล้ว)
-                          </span>
+                          <div className="w-full my-0.5 border-t border-emerald-500/30" />
+                          {/* ค่า fee ด้านล่าง */}
+                          <div className="flex items-center gap-1 leading-tight">
+                            <span className="font-mono font-extrabold text-[10px] text-emerald-400">
+                              {mv.amount.toLocaleString("th-TH")}
+                            </span>
+                            <span className="text-[8.5px] font-semibold text-emerald-300">
+                              (รับแล้ว)
+                            </span>
+                          </div>
                         </div>
                       ) : mv.type === "pending" ? (
-                        <div className="inline-flex min-w-[70px] flex-col items-center justify-center rounded-lg bg-amber-950/80 border border-amber-500/60 px-1.5 py-0.5 shadow-xs transition-transform hover:scale-105">
-                          <span className="font-mono font-extrabold text-xs text-amber-300">
-                            {mv.amount.toLocaleString("th-TH")}
+                        <div className="inline-flex min-w-[72px] flex-col items-center justify-center rounded-lg bg-amber-950/80 border border-amber-500/60 px-1.5 py-1 shadow-xs transition-transform hover:scale-105">
+                          {/* ยอดสุทธิด้านบน */}
+                          <span className="font-mono font-bold text-xs text-white leading-tight">
+                            {mv.netAmount.toLocaleString("th-TH")}
                           </span>
-                          <span className="text-[9px] font-semibold text-amber-400">
-                            (รอรับ)
-                          </span>
+                          <div className="w-full my-0.5 border-t border-amber-500/30" />
+                          {/* ค่า fee ด้านล่าง */}
+                          <div className="flex items-center gap-1 leading-tight">
+                            <span className="font-mono font-extrabold text-[10px] text-amber-400">
+                              {mv.amount.toLocaleString("th-TH")}
+                            </span>
+                            <span className="text-[8.5px] font-semibold text-amber-300">
+                              (รอรับ)
+                            </span>
+                          </div>
                         </div>
                       ) : (
                         <span className="font-mono text-neutral-600 text-xs font-semibold">-</span>
@@ -1136,14 +1179,80 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                 <td className="px-2.5 py-2 text-center text-neutral-500 font-medium text-xs">-</td>
               </tr>
 
-              {/* Row 1: รวมรายได้คาดการณ์ทั้งหมด (Total Expected) */}
+              {/* Row 1: ยอดสุทธิแต่ละเดือน (Monthly NET Total) */}
+              <tr className="border-t border-teal-500/40 bg-gradient-to-r from-teal-950/70 via-[#0a282a]/70 to-slate-950/70 font-bold text-white text-xs sm:text-sm">
+                <td colSpan={2} className="px-2.5 py-2 text-left whitespace-nowrap">
+                  <div className="inline-flex items-center gap-1.5 text-white tracking-wide text-xs sm:text-sm font-black">
+                    <span className="text-teal-400 text-sm">◆</span>
+                    <div>
+                      <div>ยอดสุทธิแต่ละเดือน</div>
+                      <div className="text-[9px] font-normal opacity-85 text-teal-300">(Monthly NET Total)</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-2.5 py-2 font-mono text-center text-neutral-500 whitespace-nowrap text-xs sm:text-sm">
+                  -
+                </td>
+                <td className="px-2.5 py-2 font-mono text-center text-neutral-500 whitespace-nowrap text-xs sm:text-sm">
+                  -
+                </td>
+                <td className="px-2.5 py-2 font-mono text-center text-neutral-500 whitespace-nowrap text-xs sm:text-sm">
+                  -
+                </td>
+                {Array.from({ length: 12 }, (_, mIdx) => {
+                  const rNet = realizedNetByMonth[mIdx];
+                  const pNet = pendingNetByMonth[mIdx];
+                  if (rNet > 0 && pNet > 0) {
+                    return (
+                      <td key={mIdx} className="px-0.5 py-1.5 font-mono text-center whitespace-nowrap">
+                        <div className="flex flex-col items-center justify-center gap-0.5">
+                          <span className="font-bold text-[11px] text-emerald-300 font-mono">
+                            {rNet.toLocaleString("th-TH")}
+                          </span>
+                          <span className="font-bold text-[11px] text-amber-300 font-mono">
+                            {pNet.toLocaleString("th-TH")}
+                          </span>
+                        </div>
+                      </td>
+                    );
+                  }
+                  if (rNet > 0) {
+                    return (
+                      <td key={mIdx} className="px-0.5 py-2 font-mono text-center whitespace-nowrap">
+                        <span className="font-extrabold text-[11px] sm:text-xs text-emerald-300 font-mono">
+                          {rNet.toLocaleString("th-TH")}
+                        </span>
+                      </td>
+                    );
+                  }
+                  if (pNet > 0) {
+                    return (
+                      <td key={mIdx} className="px-0.5 py-2 font-mono text-center whitespace-nowrap">
+                        <span className="font-extrabold text-[11px] sm:text-xs text-amber-300 font-mono">
+                          {pNet.toLocaleString("th-TH")}
+                        </span>
+                      </td>
+                    );
+                  }
+                  return (
+                    <td key={mIdx} className="px-0.5 py-2 font-mono text-center whitespace-nowrap">
+                      <span className="text-neutral-600 font-semibold text-xs">-</span>
+                    </td>
+                  );
+                })}
+                <td className="px-2.5 py-2 text-center font-mono text-teal-300 font-black whitespace-nowrap text-xs sm:text-sm">
+                  {Math.round(totalExpectedNet).toLocaleString("th-TH")}
+                </td>
+              </tr>
+
+              {/* Row 2: ผลรวมค่า fee แต่ละเดือน (Monthly Fee Total) */}
               <tr className="border-t-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-[#0d2e24] to-teal-950 font-black text-white text-xs sm:text-sm">
                 <td colSpan={2} className="px-2.5 py-2 text-left whitespace-nowrap">
                   <div className="inline-flex items-center gap-1.5 text-white tracking-wide text-xs sm:text-sm font-black">
                     <span className="text-emerald-400 text-base">★</span>
                     <div>
-                      <div>รวมรายได้คาดการณ์ทั้งหมด</div>
-                      <div className="text-[9px] font-normal opacity-85">(Total Expected)</div>
+                      <div>ผลรวมค่า fee แต่ละเดือน</div>
+                      <div className="text-[9px] font-normal opacity-85 text-emerald-300">(Monthly Fee Total)</div>
                     </div>
                   </div>
                 </td>
@@ -1211,7 +1320,7 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <span className="font-bold text-neutral-200">📌 หมายเหตุ:</span>
           <span>
-            <b>ยอดในการ์ดด้านบน (Realized NET, Realized Fee, Caregiver Net)</b>: คำนวณจากยอดที่เรียกเก็บเงินจริงแล้วในแต่ละงวดสัญญา (ยอดรอรับในอนาคตแสดงในส่วน + รอรับอีก)
+            <b>ยอดในการ์ดด้านบน (Realized NET, Realized Fee, Caregiver Net)</b>: คำนวณจากยอดที่เรียกเก็บเงินจริงแล้วในแต่ละงวดสัญญา (ยอดรอรับในอนาคตแสดงในส่วน + รอรับอีก) • <b>ข้อมูลในตาราง</b>: แสดงยอดสุทธิด้านบน / ค่า fee ด้านล่าง
           </span>
         </div>
         <div className="flex items-center gap-3">

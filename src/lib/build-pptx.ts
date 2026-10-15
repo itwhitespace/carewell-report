@@ -478,7 +478,7 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
     "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
   ];
 
-  type MonthVal = { amount: number; type: "realized" | "pending" | "none" };
+  type MonthVal = { amount: number; netAmount: number; type: "realized" | "pending" | "none" };
   type ProjRow = {
     jobCode: string;
     jobType: string;
@@ -499,9 +499,10 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
       { code: "SR-2607-0049", type: "รายวัน", net: 27800, fee: 6290, cg: 21510, m: 6, dur: 1, paid: 1, st: "เสร็จสิ้น" },
       { code: "SR-2608-0057", type: "รายวัน", net: 22000, fee: 2640, cg: 19360, m: 7, dur: 1, paid: 1, st: "เสร็จสิ้น" },
       { code: "SR-2608-0061", type: "รายวัน", net: 6000, fee: 720, cg: 5280, m: 8, dur: 1, paid: 1, st: "เสร็จสิ้น" },
-      { code: "SR-2609-0066", type: "รายเดือน (3 เดือน)", net: 21900, fee: 2628, cg: 19272, m: 8, dur: 3, paid: 1, st: "ดำเนินการอยู่" },
+      { code: "SR-2609-0066", type: "รายเดือน (3 เดือน)", net: 30000, fee: 2628, cg: 27372, m: 8, dur: 3, paid: 1, st: "ดำเนินการอยู่" },
       { code: "SR-2609-0070", type: "ไป-กลับ", net: 1700, fee: 300, cg: 1400, m: 8, dur: 1, paid: 1, st: "เสร็จสิ้น" },
       { code: "SR-2609-0067", type: "ไป-กลับ", net: 3600, fee: 540, cg: 3060, m: 8, dur: 1, paid: 1, st: "เสร็จสิ้น" },
+      { code: "SR-2610-0085", type: "ไป-กลับ", net: 5100, fee: 612, cg: 4488, m: 9, dur: 1, paid: 1, st: "เสร็จสิ้น" },
     ];
     projRows = defaultData.map((d) => ({
       jobCode: d.code,
@@ -512,9 +513,9 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
       feeAmount: d.fee,
       caregiverNet: d.cg,
       monthlyValues: Array.from({ length: 12 }, (_, idx) => {
-        if (idx === d.m) return { amount: d.fee, type: "realized" };
-        if (idx > d.m && idx < d.m + d.dur) return { amount: d.fee, type: "pending" };
-        return { amount: 0, type: "none" };
+        if (idx === d.m) return { amount: d.fee, netAmount: d.net, type: "realized" };
+        if (idx > d.m && idx < d.m + d.dur) return { amount: d.fee, netAmount: d.net, type: "pending" };
+        return { amount: 0, netAmount: 0, type: "none" };
       }),
       status: d.st,
     }));
@@ -543,10 +544,10 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
       const monthlyValues: MonthVal[] = Array.from({ length: 12 }, (_, mIdx) => {
         const monthOffset = mIdx - startMonth;
         if (monthOffset >= 0 && monthOffset < duration) {
-          if (monthOffset < paidInstallments) return { amount: item.feeAmount, type: "realized" };
-          return { amount: item.feeAmount, type: "pending" };
+          if (monthOffset < paidInstallments) return { amount: item.feeAmount, netAmount: item.netTotal, type: "realized" };
+          return { amount: item.feeAmount, netAmount: item.netTotal, type: "pending" };
         }
-        return { amount: 0, type: "none" };
+        return { amount: 0, netAmount: 0, type: "none" };
       });
       return {
         jobCode: item.jobCode,
@@ -570,6 +571,20 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
     projRows.filter((r) => r.monthlyValues[m].type !== "none").length
   );
 
+  // Monthly Net Calculations
+  const realizedNetByMonth = Array.from({ length: 12 }, (_, m) =>
+    projRows.reduce((sum, r) => sum + (r.monthlyValues[m].type === "realized" ? r.monthlyValues[m].netAmount : 0), 0)
+  );
+  const totalRealizedNet = realizedNetByMonth.reduce((a, b) => a + b, 0);
+
+  const pendingNetByMonth = Array.from({ length: 12 }, (_, m) =>
+    projRows.reduce((sum, r) => sum + (r.monthlyValues[m].type === "pending" ? r.monthlyValues[m].netAmount : 0), 0)
+  );
+  const totalPendingNet = pendingNetByMonth.reduce((a, b) => a + b, 0);
+
+  const totalExpectedNet = totalRealizedNet + totalPendingNet;
+
+  // Monthly Fee Calculations
   const realizedByMonth = Array.from({ length: 12 }, (_, m) =>
     projRows.reduce((sum, r) => sum + (r.monthlyValues[m].type === "realized" ? r.monthlyValues[m].amount : 0), 0)
   );
@@ -616,8 +631,8 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
     `${Math.round(r.feeAmount).toLocaleString("th-TH")} (${r.netTotal > 0 ? ((r.feeAmount / r.netTotal) * 100).toFixed(1) : "0"}%)`,
     `${Math.round(r.caregiverNet).toLocaleString("th-TH")}`,
     ...r.monthlyValues.map((mv) => {
-      if (mv.type === "realized") return `${Math.round(mv.amount).toLocaleString("th-TH")} (รับแล้ว)`;
-      if (mv.type === "pending") return `${Math.round(mv.amount).toLocaleString("th-TH")} (รอรับ)`;
+      if (mv.type === "realized") return `${Math.round(mv.netAmount).toLocaleString("th-TH")}\n${Math.round(mv.amount).toLocaleString("th-TH")} (รับแล้ว)`;
+      if (mv.type === "pending") return `${Math.round(mv.netAmount).toLocaleString("th-TH")}\n${Math.round(mv.amount).toLocaleString("th-TH")} (รอรับ)`;
       return "-";
     }),
     r.status,
@@ -634,19 +649,37 @@ function wonFinanceDetailSlide(pptx: PptxGenJS, wonFinance: WonFinanceStats) {
     "-",
   ]);
 
-  // Summary Row 1: Total Expected Fee (with realized/pending numbers)
+  // Summary Row 1: ยอดสุทธิแต่ละเดือน (Monthly NET Total)
   rows.push([
-    "รวมรายได้คาดการณ์",
-    "Total Expected",
+    "ยอดสุทธิแต่ละเดือน",
+    "Monthly NET Total",
+    "-",
+    "-",
+    "-",
+    ...Array.from({ length: 12 }, (_, mIdx) => {
+      const rNet = realizedNetByMonth[mIdx];
+      const pNet = pendingNetByMonth[mIdx];
+      if (rNet > 0 && pNet > 0) return `${Math.round(rNet).toLocaleString("th-TH")}\n${Math.round(pNet).toLocaleString("th-TH")}`;
+      if (rNet > 0) return `${Math.round(rNet).toLocaleString("th-TH")}`;
+      if (pNet > 0) return `${Math.round(pNet).toLocaleString("th-TH")}`;
+      return "-";
+    }),
+    `${Math.round(totalExpectedNet).toLocaleString("th-TH")}`,
+  ]);
+
+  // Summary Row 2: ผลรวมค่า fee แต่ละเดือน (Monthly Fee Total)
+  rows.push([
+    "ผลรวมค่า fee",
+    "Monthly Fee Total",
     "-",
     "-",
     "-",
     ...Array.from({ length: 12 }, (_, mIdx) => {
       const rVal = realizedByMonth[mIdx];
       const pVal = pendingByMonth[mIdx];
-      if (rVal > 0 && pVal > 0) return `${Math.round(rVal).toLocaleString("th-TH")} / ${Math.round(pVal).toLocaleString("th-TH")}`;
-      if (rVal > 0) return `${Math.round(rVal).toLocaleString("th-TH")} (รับแล้ว)`;
-      if (pVal > 0) return `${Math.round(pVal).toLocaleString("th-TH")} (รอรับ)`;
+      if (rVal > 0 && pVal > 0) return `${Math.round(rVal).toLocaleString("th-TH")}\n${Math.round(pVal).toLocaleString("th-TH")}`;
+      if (rVal > 0) return `${Math.round(rVal).toLocaleString("th-TH")}`;
+      if (pVal > 0) return `${Math.round(pVal).toLocaleString("th-TH")}`;
       return "-";
     }),
     `${Math.round(totalExpected).toLocaleString("th-TH")}`,
