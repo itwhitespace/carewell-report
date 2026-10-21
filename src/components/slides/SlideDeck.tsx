@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Download, Maximize, Minimize } from "lucide-react";
+import { Maximize, Minimize } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type {
   CancellationStats,
@@ -732,6 +732,15 @@ type MonthValue = {
   type: "realized" | "pending" | "none";
 };
 
+type CarryOverValue = {
+  monthsCount: number;
+  netAmount: number;
+  feeAmount: number;
+  caregiverNet: number;
+  paidCount: number;
+  pendingCount: number;
+};
+
 type ProjectionRow = {
   id?: string;
   jobCode: string;
@@ -742,6 +751,7 @@ type ProjectionRow = {
   feeAmount: number;
   caregiverNet: number;
   monthlyValues: MonthValue[];
+  carryOver: CarryOverValue;
   status: "เสร็จสิ้น" | "ดำเนินการอยู่" | "รอดำเนินการ";
 };
 
@@ -760,6 +770,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
           i === 4 ? { amount: 300, netAmount: 1200, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
+        carryOver: { monthsCount: 0, netAmount: 0, feeAmount: 0, caregiverNet: 0, paidCount: 0, pendingCount: 0 },
         status: "เสร็จสิ้น",
       },
       {
@@ -774,6 +785,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
           i === 6 ? { amount: 6290, netAmount: 27800, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
+        carryOver: { monthsCount: 0, netAmount: 0, feeAmount: 0, caregiverNet: 0, paidCount: 0, pendingCount: 0 },
         status: "เสร็จสิ้น",
       },
       {
@@ -788,6 +800,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
           i === 7 ? { amount: 2640, netAmount: 22000, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
+        carryOver: { monthsCount: 0, netAmount: 0, feeAmount: 0, caregiverNet: 0, paidCount: 0, pendingCount: 0 },
         status: "เสร็จสิ้น",
       },
       {
@@ -802,25 +815,23 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
           i === 8 ? { amount: 720, netAmount: 6000, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
+        carryOver: { monthsCount: 0, netAmount: 0, feeAmount: 0, caregiverNet: 0, paidCount: 0, pendingCount: 0 },
         status: "เสร็จสิ้น",
       },
       {
         id: "5",
         jobCode: "SR-2609-0066",
-        jobType: "รายเดือน (3 เดือน)",
-        duration: 3,
+        jobType: "รายเดือน (1 เดือน)",
+        duration: 1,
         paidInstallments: 1,
         netTotal: 30000,
         feeAmount: 2628,
         caregiverNet: 27372,
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
-          i === 8
-            ? { amount: 2628, netAmount: 30000, type: "realized" }
-            : i === 9 || i === 10
-            ? { amount: 2628, netAmount: 30000, type: "pending" }
-            : { amount: 0, netAmount: 0, type: "none" }
+          i === 8 ? { amount: 2628, netAmount: 30000, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
-        status: "ดำเนินการอยู่",
+        carryOver: { monthsCount: 0, netAmount: 0, feeAmount: 0, caregiverNet: 0, paidCount: 0, pendingCount: 0 },
+        status: "เสร็จสิ้น",
       },
       {
         id: "6",
@@ -834,6 +845,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
           i === 8 ? { amount: 300, netAmount: 1700, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
+        carryOver: { monthsCount: 0, netAmount: 0, feeAmount: 0, caregiverNet: 0, paidCount: 0, pendingCount: 0 },
         status: "เสร็จสิ้น",
       },
       {
@@ -848,6 +860,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
           i === 8 ? { amount: 540, netAmount: 3600, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
+        carryOver: { monthsCount: 0, netAmount: 0, feeAmount: 0, caregiverNet: 0, paidCount: 0, pendingCount: 0 },
         status: "เสร็จสิ้น",
       },
       {
@@ -862,7 +875,32 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
         monthlyValues: Array.from({ length: 12 }, (_, i) =>
           i === 9 ? { amount: 612, netAmount: 5100, type: "realized" } : { amount: 0, netAmount: 0, type: "none" }
         ),
+        carryOver: { monthsCount: 0, netAmount: 0, feeAmount: 0, caregiverNet: 0, paidCount: 0, pendingCount: 0 },
         status: "เสร็จสิ้น",
+      },
+      {
+        id: "9",
+        jobCode: "SR-2610-0088",
+        jobType: "รายเดือน (6 เดือน)",
+        duration: 6,
+        paidInstallments: 1,
+        netTotal: 26000,
+        feeAmount: 3120,
+        caregiverNet: 22880,
+        monthlyValues: Array.from({ length: 12 }, (_, i) => {
+          if (i === 9) return { amount: 3120, netAmount: 26000, type: "realized" };
+          if (i === 10 || i === 11) return { amount: 3120, netAmount: 26000, type: "pending" };
+          return { amount: 0, netAmount: 0, type: "none" };
+        }),
+        carryOver: {
+          monthsCount: 3,
+          netAmount: 78000,
+          feeAmount: 9360,
+          caregiverNet: 68640,
+          paidCount: 0,
+          pendingCount: 3,
+        },
+        status: "ดำเนินการอยู่",
       },
     ];
   }
@@ -910,6 +948,21 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
       return { amount: 0, netAmount: 0, type: "none" };
     });
 
+    // Carry Over calculation (งวดที่ข้ามไปปีถัดไป หรือเกินเดือนที่ 12)
+    const monthsInCurrentYear = Math.max(0, Math.min(duration, 12 - startMonth));
+    const carryOverMonths = Math.max(0, duration - monthsInCurrentYear);
+    const carryOverPaid = Math.max(0, paidInstallments - monthsInCurrentYear);
+    const carryOverPending = carryOverMonths - carryOverPaid;
+
+    const carryOver: CarryOverValue = {
+      monthsCount: carryOverMonths,
+      netAmount: carryOverMonths * item.netTotal,
+      feeAmount: carryOverMonths * item.feeAmount,
+      caregiverNet: carryOverMonths * item.caregiverNet,
+      paidCount: carryOverPaid,
+      pendingCount: carryOverPending,
+    };
+
     const status: "เสร็จสิ้น" | "ดำเนินการอยู่" | "รอดำเนินการ" =
       paidInstallments >= duration ? "เสร็จสิ้น" : paidInstallments > 0 ? "ดำเนินการอยู่" : "รอดำเนินการ";
 
@@ -923,6 +976,7 @@ function buildProjectionRows(wonFinance: WonFinanceStats): ProjectionRow[] {
       feeAmount: item.feeAmount,
       caregiverNet: item.caregiverNet,
       monthlyValues,
+      carryOver,
       status,
     };
   });
@@ -950,6 +1004,7 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
   const contractCountByMonth = Array.from({ length: 12 }, (_, m) =>
     rows.filter((r) => r.monthlyValues[m].type !== "none").length
   );
+  const carryOverContractCount = rows.filter((r) => r.carryOver && r.carryOver.monthsCount > 0).length;
 
   // Monthly Net Calculations
   const realizedNetByMonth = Array.from({ length: 12 }, (_, m) =>
@@ -962,7 +1017,8 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
   );
   const totalPendingNet = pendingNetByMonth.reduce((a, b) => a + b, 0);
 
-  const totalExpectedNet = totalRealizedNet + totalPendingNet;
+  const totalCarryOverNet = rows.reduce((s, r) => s + (r.carryOver?.netAmount || 0), 0);
+  const totalExpectedNet = totalRealizedNet + totalPendingNet + totalCarryOverNet;
 
   // Monthly Fee Calculations
   const realizedByMonth = Array.from({ length: 12 }, (_, m) =>
@@ -975,8 +1031,8 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
   );
   const totalPending = pendingByMonth.reduce((a, b) => a + b, 0);
 
-  // Total expected Fee
-  const totalExpected = totalRealized + totalPending;
+  const totalCarryOverFee = rows.reduce((s, r) => s + (r.carryOver?.feeAmount || 0), 0);
+  const totalExpected = totalRealized + totalPending + totalCarryOverFee;
 
   return (
     <Slide
@@ -1048,6 +1104,10 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                     {m}
                   </th>
                 ))}
+                <th className="px-2 py-2 whitespace-nowrap text-center bg-teal-900/60 border-l border-r border-teal-500/40">
+                  <div className="text-amber-300 font-bold">ยกยอดปีถัดไป</div>
+                  <div className="text-[9px] font-normal text-teal-200/80">(Carry Over)</div>
+                </th>
                 <th className="px-2.5 py-2 whitespace-nowrap text-center">
                   <div>สถานะสัญญา</div>
                   <div className="text-[9px] font-normal opacity-85">(Status)</div>
@@ -1125,6 +1185,29 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                       )}
                     </td>
                   ))}
+                  {/* คอลัมน์ยกยอดไปปีถัดไป (Carry Over) */}
+                  <td className="px-1 py-1 text-center whitespace-nowrap bg-teal-950/20 border-l border-r border-teal-500/20">
+                    {r.carryOver && r.carryOver.monthsCount > 0 ? (
+                      <div className="inline-flex min-w-[76px] flex-col items-center justify-center rounded-lg bg-gradient-to-b from-amber-950/90 to-amber-900/80 border border-amber-500/70 px-1.5 py-1 shadow-xs transition-transform hover:scale-105">
+                        {/* ยอดสุทธิด้านบน */}
+                        <span className="font-mono font-bold text-xs text-amber-200 leading-tight">
+                          {r.carryOver.netAmount.toLocaleString("th-TH")}
+                        </span>
+                        <div className="w-full my-0.5 border-t border-amber-500/40" />
+                        {/* ค่า fee และจำนวนงวดด้านล่าง */}
+                        <div className="flex items-center gap-1 leading-tight">
+                          <span className="font-mono font-extrabold text-[10px] text-amber-400">
+                            {r.carryOver.feeAmount.toLocaleString("th-TH")}
+                          </span>
+                          <span className="text-[8.5px] font-semibold text-amber-300/90">
+                            ({r.carryOver.monthsCount} งวด)
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="font-mono text-neutral-600 text-xs font-semibold">-</span>
+                    )}
+                  </td>
                   <td className="px-2.5 py-1.5 text-center whitespace-nowrap">
                     {r.status === "ดำเนินการอยู่" ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950 border border-emerald-500/70 px-2.5 py-0.5 text-xs font-bold text-emerald-300 shadow-xs">
@@ -1176,6 +1259,16 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                     )}
                   </td>
                 ))}
+                {/* Carry Over Count */}
+                <td className="px-1 py-2 font-mono text-center whitespace-nowrap bg-cyan-950/40 border-l border-r border-cyan-500/20">
+                  {carryOverContractCount > 0 ? (
+                    <span className="inline-block rounded-md bg-amber-950/80 border border-amber-500/50 px-1.5 py-0.5 font-extrabold text-[11px] text-amber-300">
+                      {carryOverContractCount} สัญญา
+                    </span>
+                  ) : (
+                    <span className="text-neutral-600 font-semibold text-xs">-</span>
+                  )}
+                </td>
                 <td className="px-2.5 py-2 text-center text-neutral-500 font-medium text-xs">-</td>
               </tr>
 
@@ -1240,8 +1333,20 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                     </td>
                   );
                 })}
+                {/* Carry Over Net Total */}
+                <td className="px-1 py-2 font-mono text-center whitespace-nowrap bg-teal-950/50 border-l border-r border-teal-500/30">
+                  {totalCarryOverNet > 0 ? (
+                    <span className="font-extrabold text-[11px] sm:text-xs text-amber-300 font-mono">
+                      {totalCarryOverNet.toLocaleString("th-TH")}
+                    </span>
+                  ) : (
+                    <span className="text-neutral-600 font-semibold text-xs">-</span>
+                  )}
+                </td>
+                {/* Grand Total Net */}
                 <td className="px-2.5 py-2 text-center font-mono text-teal-300 font-black whitespace-nowrap text-xs sm:text-sm">
-                  {Math.round(totalExpectedNet).toLocaleString("th-TH")}
+                  <div className="text-[8.5px] font-normal text-teal-400/80">รวมตลอดสัญญา</div>
+                  <div>{Math.round(totalExpectedNet).toLocaleString("th-TH")}</div>
                 </td>
               </tr>
 
@@ -1306,8 +1411,20 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
                     </td>
                   );
                 })}
+                {/* Carry Over Fee Total */}
+                <td className="px-1 py-2 font-mono text-center whitespace-nowrap bg-emerald-950/50 border-l border-r border-emerald-500/30">
+                  {totalCarryOverFee > 0 ? (
+                    <span className="font-extrabold text-[11px] sm:text-xs text-amber-300 font-mono">
+                      {totalCarryOverFee.toLocaleString("th-TH")}
+                    </span>
+                  ) : (
+                    <span className="text-neutral-600 font-semibold text-xs">-</span>
+                  )}
+                </td>
+                {/* Grand Total Fee */}
                 <td className="px-2.5 py-2 text-center font-mono text-emerald-300 font-black whitespace-nowrap text-xs sm:text-sm">
-                  {Math.round(totalExpected).toLocaleString("th-TH")}
+                  <div className="text-[8.5px] font-normal text-emerald-400/80">รวมตลอดสัญญา</div>
+                  <div>{Math.round(totalExpected).toLocaleString("th-TH")}</div>
                 </td>
               </tr>
             </tfoot>
@@ -1320,7 +1437,7 @@ function WonFinanceDetailSlide(wonFinance: WonFinanceStats, palette: ChartPalett
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <span className="font-bold text-neutral-200">📌 หมายเหตุ:</span>
           <span>
-            <b>ยอดในการ์ดด้านบน (Realized NET, Realized Fee, Caregiver Net)</b>: คำนวณจากยอดที่เรียกเก็บเงินจริงแล้วในแต่ละงวดสัญญา (ยอดรอรับในอนาคตแสดงในส่วน + รอรับอีก) • <b>ข้อมูลในตาราง</b>: แสดงยอดสุทธิด้านบน / ค่า fee ด้านล่าง
+            <b>ยอดในการ์ดด้านบน (Realized NET, Realized Fee, Caregiver Net)</b>: คำนวณจากยอดที่เรียกเก็บเงินจริงแล้วในแต่ละงวดสัญญา (ยอดรอรับในอนาคตแสดงในส่วน + รอรับอีก) • <b>ข้อมูลในตาราง</b>: แสดงยอดสุทธิด้านบน / ค่า fee ด้านล่าง • <b>ยกยอดปีถัดไป</b>: ค่างวดสัญญาต่อเนื่องไปปีถัดไป
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -1658,16 +1775,6 @@ export function SlideDeck({ data }: { data: SlideDeckData }) {
       </Link>
 
       <div className="fixed top-5 right-6 z-30 flex items-center gap-2">
-        <a
-          href="/api/export/pptx"
-          download
-          title="ดาวน์โหลดเป็น .pptx (เปิดใน Google Slides ได้)"
-          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium opacity-80 transition-opacity hover:opacity-100"
-          style={{ backgroundColor: palette.surface, color: palette.textSecondary, border: `1px solid ${palette.gridline}` }}
-        >
-          <Download size={13} />
-          <span className="hidden sm:inline">Export to Google Slides</span>
-        </a>
         <button
           onClick={toggleFullscreen}
           title={isFullscreen ? "ออกจากโหมดเต็มจอ" : "โหมดเต็มจอ"}
