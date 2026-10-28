@@ -539,7 +539,32 @@ export type ServiceRecipientRow = {
   fee_amount?: number | null;
   caregiver_net?: number | null;
   cancel_reason?: string | null;
+  created_at?: string | null;
 };
+
+/** Extracts booking month key (YYYY-MM) from job code (e.g. SR-2610-0080 -> 2026-10) */
+export function parseRecipientBookingMonth(jobCode: string | null | undefined): string | null {
+  if (!jobCode) return null;
+  const match = jobCode.trim().match(/SR-(\d{2})(\d{2})/i);
+  if (match) {
+    let yy = parseInt(match[1], 10);
+    const mm = match[2];
+    if (yy >= 50) yy -= 43; // Thai Buddhist Era 2-digit to CE (e.g. 69 -> 26 -> 2026)
+    return `20${String(yy).padStart(2, "0")}-${mm}`;
+  }
+  return null;
+}
+
+/** Determines registration/booking month key (YYYY-MM) for a service recipient.
+ * Prioritizes job_code (Booking Month), then falls back to service_date or created_at. */
+export function getRecipientBookingMonthKey(r: ServiceRecipientRow): string | null {
+  const fromCode = parseRecipientBookingMonth(r.job_code);
+  if (fromCode) return fromCode;
+  if (r.service_date) return monthKeyOf(r.service_date);
+  if (r.created_at) return monthKeyOf(r.created_at);
+  return null;
+}
+
 
 export type ChannelFunnelStat = {
   monthKey: string;
@@ -573,8 +598,8 @@ export function monthlyChannelFunnel(
   const cancelByMonth = new Map<string, number>();
 
   for (const r of recipients) {
-    if (!r.service_date) continue;
-    const mk = monthKeyOf(r.service_date);
+    const mk = getRecipientBookingMonthKey(r);
+    if (!mk) continue;
     registerByMonth.set(mk, (registerByMonth.get(mk) ?? 0) + 1);
     const st = (r.status ?? "").trim().toLowerCase();
     if (st === "won") {
@@ -775,8 +800,8 @@ export function monthlyWonFinance(recipients: ServiceRecipientRow[]): WonFinance
       paidInstallments: parsePaidInstallments(r.cancel_reason),
     });
 
-    if (!r.service_date) continue;
-    const mk = monthKeyOf(r.service_date);
+    const mk = getRecipientBookingMonthKey(r);
+    if (!mk) continue;
     const existing = byMonth.get(mk) ?? {
       wonCount: 0,
       totalNet: 0,

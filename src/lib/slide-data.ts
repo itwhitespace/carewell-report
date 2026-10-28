@@ -48,7 +48,7 @@ export async function loadSlideData(): Promise<SlideDeckData> {
     supabase.from("report_notes").select("topic, detail").order("sort_order").order("created_at"),
     supabase
       .from("service_recipients")
-      .select("id, job_code, service_date, care_level, work_format, status, net_total, fee_percent, fee_amount, caregiver_net, cancel_reason"),
+      .select("id, job_code, service_date, care_level, work_format, status, net_total, fee_percent, fee_amount, caregiver_net, cancel_reason, created_at"),
   ]);
 
   const lineOaRows = (lineOaRes.data ?? []) as LineOaRow[];
