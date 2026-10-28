@@ -570,7 +570,7 @@ export type ChannelFunnelStat = {
   monthKey: string;
   monthLabel: string;
   friendCount: number | null;
-  newFriends: number;
+  newFriends: number | null;
   registerCount: number;
   matchingCount: number;
   underCareCount: number;
@@ -583,13 +583,26 @@ export type ChannelFunnelStat = {
  * recipients registered -> deals won. `service_recipients` has no
  * per-account channel field in the source data, so — like
  * `monthlyConversion` — registrations are counted system-wide, not
- * attributed to this specific account. */
+ * attributed to this specific account.
+ * Groups by job_code (รหัสงาน เช่น SR-2610-xxxx = ปี 26 เดือน 10) */
 export function monthlyChannelFunnel(
   lineOaRows: LineOaRow[],
   account: LineOaRow["account"],
   recipients: ServiceRecipientRow[]
 ): ChannelFunnelStat[] {
   const monthly = monthlyLineOaStats(lineOaRows, account);
+  const monthlyMap = new Map(monthly.map((m) => [m.monthKey, m]));
+
+  const allMonthKeysSet = new Set<string>();
+  for (const m of monthly) {
+    allMonthKeysSet.add(m.monthKey);
+  }
+  for (const r of recipients) {
+    const mk = getRecipientBookingMonthKey(r);
+    if (mk) allMonthKeysSet.add(mk);
+  }
+
+  const allMonthKeys = [...allMonthKeysSet].sort();
 
   const registerByMonth = new Map<string, number>();
   const matchingByMonth = new Map<string, number>();
@@ -613,18 +626,25 @@ export function monthlyChannelFunnel(
     }
   }
 
-  return monthly.map((m) => {
-    const registerCount = registerByMonth.get(m.monthKey) ?? 0;
-    const matchingCount = matchingByMonth.get(m.monthKey) ?? 0;
-    const underCareCount = underCareByMonth.get(m.monthKey) ?? 0;
-    const wonCount = wonByMonth.get(m.monthKey) ?? 0;
-    const cancelCount = cancelByMonth.get(m.monthKey) ?? 0;
-    const registerRatePct = m.newFollowers > 0 ? (registerCount / m.newFollowers) * 100 : null;
+  return allMonthKeys.map((mk) => {
+    const m = monthlyMap.get(mk);
+    const registerCount = registerByMonth.get(mk) ?? 0;
+    const matchingCount = matchingByMonth.get(mk) ?? 0;
+    const underCareCount = underCareByMonth.get(mk) ?? 0;
+    const wonCount = wonByMonth.get(mk) ?? 0;
+    const cancelCount = cancelByMonth.get(mk) ?? 0;
+    const friendCount = m ? m.contacts : null;
+    const newFriends = m ? m.newFollowers : null;
+    const registerRatePct =
+      newFriends !== null && newFriends > 0
+        ? (registerCount / newFriends) * 100
+        : null;
+
     return {
-      monthKey: m.monthKey,
-      monthLabel: m.monthLabel,
-      friendCount: m.contacts,
-      newFriends: m.newFollowers,
+      monthKey: mk,
+      monthLabel: m ? m.monthLabel : monthLabelTh(mk),
+      friendCount,
+      newFriends,
       registerCount,
       matchingCount,
       underCareCount,

@@ -356,8 +356,8 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
 
   const funnelRows: Record<string, React.ReactNode>[] = (funnel ?? []).map((f) => ({
     month: shortMonthLabel(f.monthKey),
-    friends: `${fmtInt(f.friendCount)} คน`,
-    newFriends: `${fmtInt(f.newFriends)} คน`,
+    friends: f.friendCount !== null ? `${fmtInt(f.friendCount)} คน` : "-",
+    newFriends: f.newFriends !== null ? `${fmtInt(f.newFriends)} คน` : "-",
     register: (
       <span style={{ color: f.registerCount > 0 ? "#FACC15" : undefined, fontWeight: f.registerCount > 0 ? 600 : 400 }}>
         {f.registerCount} คน
@@ -386,8 +386,8 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
   }));
 
   if (funnel && funnel.length > 0) {
-    const lastFriend = funnel[funnel.length - 1].friendCount;
-    const totalNewFriends = funnel.reduce((s, f) => s + f.newFriends, 0);
+    const lastFriend = [...funnel].reverse().find((f) => f.friendCount !== null)?.friendCount ?? null;
+    const totalNewFriends = funnel.reduce((s, f) => s + (f.newFriends ?? 0), 0);
     const totalRegister = funnel.reduce((s, f) => s + f.registerCount, 0);
     const totalMatching = funnel.reduce((s, f) => s + f.matchingCount, 0);
     const totalWon = funnel.reduce((s, f) => s + f.wonCount, 0);
@@ -396,7 +396,7 @@ function AccountOverviewSlides(account: AccountDetail, palette: ChartPalette) {
 
     funnelRows.push({
       month: <b>ยอดรวมสะสม (Total)</b>,
-      friends: <b>{fmtInt(lastFriend)} คน (สะสมจริง)</b>,
+      friends: <b>{lastFriend !== null ? `${fmtInt(lastFriend)} คน (สะสมจริง)` : "-"}</b>,
       newFriends: "-",
       register: <b>{fmtInt(totalRegister)} คน</b>,
       matching: <b>{totalMatching > 0 ? `${totalMatching} ราย` : "-"}</b>,

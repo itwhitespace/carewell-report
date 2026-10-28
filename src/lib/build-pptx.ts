@@ -210,8 +210,8 @@ function accountSlides(pptx: PptxGenJS, account: AccountDetail) {
     );
     const rows: (string | number)[][] = funnel.map((f) => [
       f.monthLabel,
-      `${fmtInt(f.friendCount)} คน`,
-      `${fmtInt(f.newFriends)} คน`,
+      f.friendCount !== null ? `${fmtInt(f.friendCount)} คน` : "-",
+      f.newFriends !== null ? `${fmtInt(f.newFriends)} คน` : "-",
       `${fmtInt(f.registerCount)} คน`,
       f.matchingCount > 0 ? `${f.matchingCount} ราย` : "-",
       f.wonCount > 0 ? `${f.wonCount} ราย (Won)` : "0 ราย",
@@ -219,8 +219,8 @@ function accountSlides(pptx: PptxGenJS, account: AccountDetail) {
       fmtPct(f.registerRatePct, 2),
     ]);
     if (funnel.length > 0) {
-      const lastFriend = funnel[funnel.length - 1].friendCount;
-      const totalNewFriends = funnel.reduce((s, f) => s + f.newFriends, 0);
+      const lastFriend = [...funnel].reverse().find((f) => f.friendCount !== null)?.friendCount ?? null;
+      const totalNewFriends = funnel.reduce((s, f) => s + (f.newFriends ?? 0), 0);
       const totalRegister = funnel.reduce((s, f) => s + f.registerCount, 0);
       const totalMatching = funnel.reduce((s, f) => s + f.matchingCount, 0);
       const totalWon = funnel.reduce((s, f) => s + f.wonCount, 0);
@@ -228,7 +228,7 @@ function accountSlides(pptx: PptxGenJS, account: AccountDetail) {
       const totalRate = totalNewFriends > 0 ? (totalRegister / totalNewFriends) * 100 : null;
       rows.push([
         "ยอดรวมสะสม (Total)",
-        `${fmtInt(lastFriend)} คน (สะสมจริง)`,
+        lastFriend !== null ? `${fmtInt(lastFriend)} คน (สะสมจริง)` : "-",
         "-",
         `${fmtInt(totalRegister)} คน`,
         totalMatching > 0 ? `${totalMatching} ราย` : "-",
